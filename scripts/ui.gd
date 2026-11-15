@@ -2,7 +2,7 @@ class_name UI
 extends RefCounted
 ## ธีมและตัวช่วยสร้าง UI แบบเกม pixel — กรอบ 9-slice, ปุ่มนูนมีเสียง, หัวข้อมีขอบตัวอักษร
 
-const BG := Color("1b2d45")
+const BG := Color("dcecf7")
 const SURFACE := Color("f4f8fb")
 const SURFACE_2 := Color("e8f0f6")
 const INK := Color("13233a")
@@ -19,7 +19,7 @@ const WARN := Color("d9822b")
 const WARN_SOFT := Color("fbecd8")
 const LILAC := Color("7b6ba8")
 const GOLD := Color("ffd34d")
-const DIALOG_TEXT := Color("f4f8fb")
+const DIALOG_TEXT := Color("13233a")   # ตัวหนังสือบนกล่องสีสว่าง
 const PAPER_INK := Color("3e2a1c")
 
 static var font_body: FontFile
@@ -33,6 +33,11 @@ static func load_fonts() -> void:
 	font_body = load("res://assets/fonts/IBMPlexSansThai-Regular.ttf")
 	font_bold = load("res://assets/fonts/IBMPlexSansThai-SemiBold.ttf")
 	font_head = load("res://assets/fonts/BaiJamjuree-Bold.ttf")
+	# ฟอนต์สำรองสำหรับสัญลักษณ์ (★ ▶ ✔) และอีโมจิ (🪙 🏆 👗) — เวอร์ชันเว็บไม่มีฟอนต์ระบบให้ยืม
+	var sym: FontFile = load("res://assets/fonts/DejaVuSans-Symbols.ttf")
+	var emo: FontFile = load("res://assets/fonts/NotoColorEmoji-Subset.ttf")
+	for f in [font_body, font_bold, font_head]:
+		f.fallbacks = [sym, emo]
 
 
 ## กรอบสีเรียบ (ใช้กับแถวเล็ก ๆ)
@@ -191,9 +196,9 @@ static func btn(text: String, cb: Callable = Callable(), kind: String = "", size
 			b.add_theme_stylebox_override("pressed", tbox("choice_hover", 8))
 			b.add_theme_stylebox_override("disabled", tbox("choice", 8))
 			b.add_theme_color_override("font_color", DIALOG_TEXT)
-			b.add_theme_color_override("font_hover_color", GOLD)
-			b.add_theme_color_override("font_pressed_color", GOLD)
-			b.add_theme_color_override("font_disabled_color", Color("7f93a8"))
+			b.add_theme_color_override("font_hover_color", BRAND)
+			b.add_theme_color_override("font_pressed_color", BRAND)
+			b.add_theme_color_override("font_disabled_color", Color("8da3b5"))
 		_:
 			_btn_style(b, "btn_light", "slot_on", INK, INK, 12)
 	b.mouse_entered.connect(func():
@@ -304,8 +309,39 @@ static func backdrop(dim: float = 0.35) -> Control:
 		var tw := c.create_tween().set_loops()
 		tw.tween_property(c, "position:x", -300.0, 50.0 + i * 15).from(1400.0 + i * 100)
 	var shade := ColorRect.new()
-	shade.color = Color(0.06, 0.1, 0.18, dim)
+	shade.color = Color(1.0, 0.99, 0.95, dim * 0.45)   # โทนสว่าง: ทับด้วยสีขาวนวล
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(shade)
 	return root
+
+## รูป Achievement — ใช้รูปวาดจริงถ้ามีไฟล์ ไม่งั้นใช้เหรียญตราชั่วคราว + อีโมจิ
+static func ach_icon(a: Dictionary, unlocked: bool, k: float = 3.0) -> Control:
+	var path: String = Prof.ACH_IMG_DIR + a.id + ".png"
+	var box := CenterContainer.new()
+	box.custom_minimum_size = Vector2(32, 32) * k
+	box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	if ResourceLoader.exists(path):
+		var t := TextureRect.new()
+		t.texture = load(path)
+		t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		t.custom_minimum_size = Vector2(32, 32) * k
+		if not unlocked:
+			t.modulate = Color(0.3, 0.3, 0.35, 0.6)
+		box.add_child(t)
+		return box
+	var st := Control.new()
+	st.custom_minimum_size = Vector2(32, 32) * k
+	var img := pix(Px.ach_badge(a.id, "", not unlocked), k)
+	img.position = Vector2.ZERO
+	img.size = img.custom_minimum_size
+	st.add_child(img)
+	var e := label(a.get("icon", "★") if unlocked else "?", int(11 * k), INK, true)
+	e.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	e.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	e.position = Vector2(0, 0)
+	e.size = Vector2(32, 28) * k
+	st.add_child(e)
+	box.add_child(st)
+	return box

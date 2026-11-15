@@ -53,8 +53,16 @@ func _ready() -> void:
 	var start := UI.btn("▶   เริ่มเกม", func(): G.goto("lobby"), "primary", 22)
 	start.custom_minimum_size = Vector2(380, 0)
 	mv.add_child(start)
-	mv.add_child(UI.btn("👗  ชุดนักศึกษาพยาบาลใหม่ & โลโก้", _gallery, "", 16))
-	mv.add_child(UI.btn("📜  มีอะไรใหม่ · อัปเดต 25-9-2569", _notes, "", 16))
+	var mh := UI.hbox(8)
+	var wb := UI.btn("👗  แต่งตัว & ร้านค้า", func(): G.goto("wardrobe"), "", 16)
+	wb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mh.add_child(wb)
+	var ab := UI.btn("🏆  Achievement", func(): G.goto("achieve"), "", 16)
+	ab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mh.add_child(ab)
+	mv.add_child(mh)
+	mv.add_child(UI.btn("🎓  ชุดนักศึกษาพยาบาล & โลโก้คณะ", _gallery, "", 16))
+	mv.add_child(UI.btn("📜  มีอะไรใหม่ · อัปเดต 15-11-2569", _notes, "", 16))
 	mv.add_child(UI.btn("📚  Pre-Test · คู่มือ · Post-Test", func(): G.say("ส่วนนี้ยังไม่อยู่ในเดโม — เดโมนี้คือเกมประเมิน MMSE ครบทั้ง 11 ข้อ"), "", 16))
 	v.add_child(menu)
 	press = UI.title("กด Enter เพื่อเริ่ม", 16, Color.WHITE)
@@ -84,12 +92,12 @@ func _gallery() -> void:
 	var row := UI.hbox(18)
 	for pose in ["idle", "walk1", "offer", "tray", "clip"]:
 		var f := UI.frame("slot", 6)
-		f.add_child(UI.pix(Px.nurse(pose), 3.0))
+		f.add_child(UI.pix(Px.nurse(pose, false, Prof.DEFAULT_OUTFIT), 3.0))
 		row.add_child(f)
 	v.add_child(row)
 	var r2 := UI.hbox(16)
 	var pf := UI.frame("slot", 6)
-	pf.add_child(UI.pix(Px.portrait("nurse", "smile"), 3.0))
+	pf.add_child(UI.pix(Px.portrait("head", "smile"), 3.0))
 	r2.add_child(pf)
 	r2.add_child(UI.pix(Px.logo_pixel(40), 3.0))
 	r2.add_child(UI.pix(Px.logo_tex(), 0.2))
@@ -99,6 +107,10 @@ func _gallery() -> void:
 
 func _notes() -> void:
 	var bb := ""
+	bb += "[b]อัปเดต 15-11-2569[/b]\n"
+	for n in D.UPDATE_NOTES_NEW:
+		bb += "✦ " + n + "\n"
+	bb += "\n[b]อัปเดต 25-9-2569[/b]\n"
 	for n in D.UPDATE_NOTES:
 		bb += "✦ " + n + "\n"
 	bb += "✦ ปรับหน้าตาเป็นเกม: ฉากเต็มจอ กล่องบทสนทนาแบบ RPG เลือกคำพูดเป็นเมนู ใบคะแนนแบบคลิปบอร์ด เสียงเอฟเฟกต์ และดาวรางวัล"

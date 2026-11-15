@@ -43,8 +43,11 @@ var seq_tw: Tween
 var pause_layer: Control
 
 
+const DLG_H := 244   # ความสูงกล่องบทสนทนา (ขยายให้อ่านง่ายขึ้น)
+
 func build_base(kind: String = "room") -> void:
 	stage = Stage.new(kind)
+	stage.lift = 0 if OS.has_environment("NOLIFT") else 11   # ยกฉากขึ้นเล็กน้อย ตัวละครจะได้ไม่ถูกกล่องบทสนทนาที่ใหญ่ขึ้นบัง
 	stage.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(stage)
 	_build_hud()
@@ -70,7 +73,12 @@ func _build_hud() -> void:
 	wh.add_child(UI.pix(Px.portrait(G.scn().sex, "normal"), 1.2))
 	var wv := UI.vbox(-4)
 	hud_title = UI.title("", 19, Color.WHITE)
-	hud_sub = UI.label(G.run_tag(), 11, Color("a9c6e3"), true)
+	hud_sub = UI.label(G.run_tag(), 11, UI.MUTED, true)
+	hud_sub.clip_text = true
+	hud_sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	hud_sub.custom_minimum_size.x = 200
+	hud_sub.tooltip_text = G.run_tag()
+	hud_sub.mouse_filter = Control.MOUSE_FILTER_PASS
 	wv.add_child(hud_title)
 	wv.add_child(hud_sub)
 	wh.add_child(wv)
@@ -136,7 +144,7 @@ func set_dots(list: Array) -> void:
 	UI.clear(dots)
 	for d in list:
 		var kind := "slot"
-		var fg := Color("a9c6e3")
+		var fg := UI.MUTED
 		if d.state == "done":
 			kind = "btn_green"; fg = Color.WHITE
 		elif d.state == "now":
@@ -165,7 +173,7 @@ func _build_dialog() -> void:
 	var m := MarginContainer.new()
 	m.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	m.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	m.offset_top = -212
+	m.offset_top = -DLG_H
 	for s in ["left", "right", "bottom"]:
 		m.add_theme_constant_override("margin_" + s, 14)
 	add_child(m)
@@ -178,17 +186,15 @@ func _build_dialog() -> void:
 	dlg.add_child(h)
 	dlg_port_box = UI.vbox(2)
 	var pf := UI.frame("slot", 6)
-	dlg_portrait = UI.pix(Px.portrait("nurse"), 3.0)
+	dlg_portrait = UI.pix(Px.portrait("nurse"), 3.6)
 	pf.add_child(dlg_portrait)
 	dlg_port_box.add_child(pf)
 	h.add_child(dlg_port_box)
 	var v := UI.vbox(4)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	dlg_name = UI.title("", 18, UI.GOLD)
+	dlg_name = UI.title("", 23, UI.GOLD)
 	v.add_child(dlg_name)
-	dlg_text = UI.rich("", 19, UI.DIALOG_TEXT)
-	dlg_text.add_theme_color_override("font_outline_color", Color("0b1626"))
-	dlg_text.add_theme_constant_override("outline_size", 3)
+	dlg_text = UI.rich("", 25, UI.DIALOG_TEXT)
 	dlg_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(dlg_text)
 	dlg_choices = GridContainer.new()
@@ -196,7 +202,7 @@ func _build_dialog() -> void:
 	dlg_choices.add_theme_constant_override("v_separation", 0)
 	v.add_child(dlg_choices)
 	h.add_child(v)
-	dlg_next = UI.label("▼", 16, UI.GOLD, true)
+	dlg_next = UI.label("▼", 20, UI.BRAND, true)
 	dlg_next.size_flags_vertical = Control.SIZE_SHRINK_END
 	dlg_next.visible = false
 	h.add_child(dlg_next)
@@ -214,18 +220,18 @@ func speak(who: String, text: String, expr: String = "talk") -> void:
 			dlg_port_box.visible = true
 			dlg_portrait.texture = Px.portrait("nurse", expr)
 			dlg_name.text = "นักศึกษาพยาบาล (คุณ)"
-			dlg_name.add_theme_color_override("font_color", Color("9fd3ff"))
+			dlg_name.add_theme_color_override("font_color", UI.BRAND)
 			stage.say(text, "nurse")
 		"patient":
 			dlg_port_box.visible = true
 			dlg_portrait.texture = Px.portrait(G.scn().sex, expr)
 			dlg_name.text = G.scn().name
-			dlg_name.add_theme_color_override("font_color", UI.GOLD)
+			dlg_name.add_theme_color_override("font_color", Color("f0a020"))
 			stage.say(text, "patient")
 		_:
 			dlg_port_box.visible = false
 			dlg_name.text = ""
-	dlg_text.text = text if who != "narr" else "[color=#bcd6ee]" + text + "[/color]"
+	dlg_text.text = text if who != "narr" else "[color=#3d5a78]" + text + "[/color]"
 	dlg_text.visible_ratio = 0.0
 	_type_last = 0
 	if type_tw:
@@ -270,15 +276,15 @@ func choices(prompt: String, items: Array, cb: Callable) -> void:
 	dlg_port_box.visible = true
 	dlg_portrait.texture = Px.portrait("nurse", "normal")
 	dlg_name.text = "เลือกสิ่งที่จะพูด / ทำ"
-	dlg_name.add_theme_color_override("font_color", Color("9fd3ff"))
+	dlg_name.add_theme_color_override("font_color", UI.BRAND)
 	UI.clear(dlg_choices)
 	_choice_btns.clear()
 	_choice_cb = cb
-	var two: bool = items.size() > 3 and items.all(func(s): return String(s).length() < 40)
+	var two: bool = items.size() > 3 and items.all(func(s): return String(s).length() < 34)
 	dlg_choices.columns = 2 if two else 1
 	for i in items.size():
-		var b := UI.btn("%d ▸ %s" % [i + 1, items[i]], func(): _choose(i), "opt", 16)
-		b.custom_minimum_size.x = 440 if two else 820
+		var b := UI.btn("%d ▸ %s" % [i + 1, items[i]], func(): _choose(i), "opt", 21)
+		b.custom_minimum_size.x = 470 if two else 900
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		dlg_choices.add_child(b)
 		_choice_btns.append(b)
@@ -310,7 +316,7 @@ func _build_action() -> void:
 	act_btn.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	act_btn.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	act_btn.offset_right = -24
-	act_btn.offset_bottom = -226
+	act_btn.offset_bottom = -DLG_H - 14
 	act_btn.visible = false
 	add_child(act_btn)
 
@@ -342,7 +348,7 @@ func _build_sheet() -> void:
 	sheet.offset_left = 0
 	sheet.offset_right = 360
 	sheet.offset_top = 70
-	sheet.offset_bottom = -226
+	sheet.offset_bottom = -DLG_H - 14
 	add_child(sheet)
 	var clip := VBoxContainer.new()
 	clip.add_theme_constant_override("separation", -6)
@@ -362,7 +368,7 @@ func _build_sheet() -> void:
 	pv.add_child(th)
 	pad_head = UI.label("", 11, Color("7a6656"), true)
 	pv.add_child(pad_head)
-	pad_ask = UI.wrap(UI.label("", 14, UI.PAPER_INK, true))
+	pad_ask = UI.wrap(UI.label("", 16, UI.PAPER_INK, true))
 	pv.add_child(pad_ask)
 	pad_actions = UI.flow(6)
 	pv.add_child(pad_actions)
@@ -391,7 +397,7 @@ func pad_row(key: String, text: String) -> void:
 	var b := Button.new()
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	b.add_theme_font_size_override("font_size", 14)
+	b.add_theme_font_size_override("font_size", 16)
 	b.add_theme_font_override("font", UI.font_body)
 	b.focus_mode = Control.FOCUS_NONE
 	rows_state[key] = {"btn": b, "text": text, "on": false, "tickable": false, "scored": false, "value": -1, "active": false}
@@ -413,7 +419,7 @@ func _row_style(key: String) -> void:
 	var bg := Color(1, 1, 1, 0.0)
 	var border := Color("e2d3bd")
 	if s.scored:
-		mark = "①" if s.value == 1 else "⓪"
+		mark = "①" if s.value == 1 else "✗"
 		bg = Color("e3f3e8") if s.value else Color("f6e6da")
 	elif s.tickable:
 		mark = "☑" if s.on else "☐"

@@ -25,7 +25,7 @@ func _ready() -> void:
 	p.add_child(v)
 	var top := UI.hbox(12)
 	var pf := UI.frame("slot", 4)
-	pf.add_child(UI.pix(Px.portrait("nurse", "smile"), 2.0))
+	pf.add_child(UI.pix(Px.portrait("head", "smile"), 2.0))
 	top.add_child(pf)
 	var tv := UI.vbox(2)
 	head = UI.title("เข้าสู่ระบบ", 28, UI.GOLD)

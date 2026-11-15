@@ -18,9 +18,9 @@ func _ready() -> void:
 	var sc := UI.scroll(UI.margin(col, 22))
 	sc.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(sc)
-	col.add_child(UI.label("ประเมินครบทุกข้อแล้ว · Scenario %d — %s" % [G.scn().no, G.scn().name], 13, Color("cfe3f7"), true))
+	col.add_child(UI.label("ประเมินครบทุกข้อแล้ว · Scenario %d — %s" % [G.scn().no, G.scn().name], 13, UI.INK_2, true))
 	col.add_child(UI.title("ด่านสุดท้าย: แปลผลคะแนน", 32, UI.GOLD))
-	col.add_child(UI.wrap(UI.label("ถามครบทุกข้อแล้วยังไม่จบ — ผู้ประเมินต้องแปลผลคะแนนตามระดับการศึกษาของผู้ป่วยด้วย", 15, Color.WHITE)))
+	col.add_child(UI.wrap(UI.label("ถามครบทุกข้อแล้วยังไม่จบ — ผู้ประเมินต้องแปลผลคะแนนตามระดับการศึกษาของผู้ป่วยด้วย", 15, UI.INK)))
 
 	var row := UI.hbox(14)
 	col.add_child(row)

@@ -9,6 +9,8 @@ const USERS_PATH := "user://users.json"
 const SESSION_PATH := "user://session.json"
 
 var scenario_key := "s1"
+var setting := "hosp"     # hosp = ในโรงพยาบาล · comm = ในชุมชน (เยี่ยมบ้าน)
+var diff := "easy"        # easy · medium · hard
 var setup := {"ans": {}, "kit": {}}
 var run: Dictionary = {}
 var after_login := "lobby"
@@ -35,6 +37,27 @@ func say(msg: String) -> void:
 # ---------- scenario ----------
 func scn() -> Dictionary:
 	return D.scenario(scenario_key)
+
+func is_comm() -> bool:
+	return setting == "comm"
+
+## ฉากห้องประเมิน: ห้องผู้ป่วย หรือ บ้านผู้ป่วยในชุมชน
+func room_kind() -> String:
+	return "home" if is_comm() else "room"
+
+func hall_kind() -> String:
+	return "lane" if is_comm() else "corridor"
+
+## สุ่มเคส 1 เคสจากระดับความยากที่เลือก (พยายามไม่ซ้ำเคสเดิม)
+func roll_case(d: String = "") -> void:
+	if d != "":
+		diff = d
+	var pool: Array = D.cases_of(diff)
+	if pool.is_empty():
+		return
+	var others := pool.filter(func(s): return s.k != scenario_key)
+	var pick_from: Array = others if others.size() else pool
+	scenario_key = pick_from[randi() % pick_from.size()].k
 
 ## โอกาสที่ผู้ป่วยทำ/ตอบได้ ปรับตามสถานการณ์ (s1 ร่วมมือดี · s2 สับสน)
 func chance(p: float) -> bool:
@@ -225,7 +248,8 @@ func verdict_of(score: int, k: String) -> String:
 func run_tag() -> String:
 	if run.is_empty():
 		return "เกมสถานการณ์จำลอง"
-	var s := "Scenario %d · %s" % [scn().no, scn().name]
+	var s: String = scn().name
+	s += " · " + D.diff_of(scn().diff).t + (" · ชุมชน" if is_comm() else "")
 	if not run.full:
 		return "ฝึกทีละข้อ · " + s
 	return "ประเมินเต็มชุด · ข้อที่ %d จาก %d · %s" % [run.i + 1, run.queue.size(), s]
@@ -278,7 +302,7 @@ func route_part(id: String) -> void:
 		return
 	match part.scr:
 		"time":
-			goto("time")
+			goto("time", {"id": id})
 		"cmd":
 			var ids := [id]
 			if id == "cmd8" and run.i + 1 < run.queue.size() and run.queue[run.i + 1] == "cmd9":

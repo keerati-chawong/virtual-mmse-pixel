@@ -2,6 +2,7 @@ class_name Stage
 extends Control
 ## ฉาก pixel art 320×180 (SubViewport) ขยายเต็มพื้นที่ + ชั้นทับสำหรับข้อความไทยและจุดกดในฉาก
 ## kind: "room" = ห้องผู้ป่วย · "corridor" = ทางเดินหน้าห้องตรวจ
+##       "home" = บ้านผู้สูงอายุในชุมชน · "lane" = ลานหน้าบ้าน (ศาลา อสม.)
 
 const W := 320
 const H := 180
@@ -11,6 +12,7 @@ const PATIENT_POS := Vector2(200, 99)
 
 var kind := "room"
 var cover := true            # true = ขยายเต็มกรอบ (ตัดขอบ) · false = เห็นทั้งภาพ
+var lift := 0                # ยกฉากขึ้น (พิกเซลในฉาก) — ใช้ในหน้าประเมินที่กล่องบทสนทนาสูง
 var vp: SubViewport
 var world: Node2D
 var view: TextureRect
@@ -47,6 +49,11 @@ func _ready() -> void:
 	world = Node2D.new()
 	vp.add_child(world)
 
+	var under := ColorRect.new()   # สีพื้นรองใต้ฉาก (โผล่เมื่อยกฉากขึ้น)
+	under.color = Color("cdb796")
+	under.set_anchors_preset(Control.PRESET_FULL_RECT)
+	under.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(under)
 	view = TextureRect.new()
 	view.texture = vp.get_texture()
 	view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -63,10 +70,15 @@ func _ready() -> void:
 
 	var bg := Sprite2D.new()
 	bg.centered = false
-	bg.texture = Px.cached("bg_" + kind, func(): return Art.room() if kind == "room" else Art.corridor())
+	bg.texture = Px.cached("bg_" + kind, func():
+		match kind:
+			"room": return Art.room()
+			"home": return Art.home()
+			"lane": return Art.lane()
+		return Art.corridor())
 	world.add_child(bg)
 
-	if kind == "room":
+	if is_room():
 		var rain := preload("res://scripts/rain.gd").new()
 		rain.area = Rect2(236, 16, 68, 44)
 		world.add_child(rain)
@@ -102,6 +114,10 @@ func _ready() -> void:
 	_build_overlay_ui()
 	resized.connect(_relayout)
 	_relayout.call_deferred()
+
+
+func is_room() -> bool:
+	return kind == "room" or kind == "home"
 
 
 func _sprite(t: Texture2D, pos: Vector2) -> Sprite2D:
@@ -140,10 +156,9 @@ func _build_overlay_ui() -> void:
 	flag = PanelContainer.new()
 	flag.add_theme_stylebox_override("panel", UI.tbox("wood", 10))
 	flag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	flag_text = UI.label("", 16, Color.WHITE, true)
+	flag_text = UI.label("", 20, Color.WHITE, true)
 	flag_text.add_theme_constant_override("outline_size", 4)
 	flag_text.add_theme_color_override("font_outline_color", Color("3b2414"))
-	flag_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	flag_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	flag.add_child(flag_text)
 	flag.visible = false
@@ -151,9 +166,11 @@ func _build_overlay_ui() -> void:
 	if kind == "room":
 		add_label("ward", Rect2(60, 20, 56, 8), "ป้ายหอผู้ป่วย", 10, Color.WHITE)
 		add_label("room_no", Rect2(14, 14, 22, 6), "512", 8, Color.WHITE)
+	elif kind == "home":
+		add_label("ward", Rect2(60, 20, 56, 8), "บ้านเลขที่ 45", 10, Color.WHITE)
 	else:
-		add_label("door", Rect2(234, 12, 58, 11), "ห้องตรวจ 1", 13, Color.WHITE)
-		add_label("sign", Rect2(140, 20, 64, 9), "หอผู้ป่วยอายุรกรรม", 10, Color.WHITE)
+		add_label("door", Rect2(234, 12, 58, 11), "บ้านเลขที่ 45" if kind == "lane" else "ห้องตรวจ 1", 13, Color.WHITE)
+		add_label("sign", Rect2(140, 20, 64, 9), "บ้านโนนทัน หมู่ 3" if kind == "lane" else "หอผู้ป่วยอายุรกรรม", 10, Color.WHITE)
 		add_label("table", Rect2(12, 73, 104, 7), "โต๊ะเตรียมอุปกรณ์", 9, UI.INK_2)
 
 
@@ -207,7 +224,7 @@ func _disp() -> Rect2:
 	var s := size
 	var k := maxf(s.x / W, s.y / H) if cover else minf(s.x / W, s.y / H)
 	var ds := Vector2(W, H) * k
-	return Rect2((s - ds) * 0.5, ds)
+	return Rect2((s - ds) * 0.5 - Vector2(0, lift * k), ds)
 
 func w2s(p: Vector2) -> Vector2:
 	var d := _disp()
@@ -221,6 +238,8 @@ func _relayout() -> void:
 		return
 	overlay.move_child(flag, -1)
 	var d := _disp()
+	view.offset_top = d.position.y - (size.y - d.size.y) * 0.5
+	view.offset_bottom = view.offset_top
 	var k := d.size.x / W
 	for c in overlay.get_children():
 		if c.has_meta("wr"):
@@ -229,7 +248,8 @@ func _relayout() -> void:
 			c.size = wr.size * k
 			if c is Label:
 				c.add_theme_font_size_override("font_size", maxi(9, int(c.get_meta("fs") * k / 2.6)))
-	flag.custom_minimum_size.x = minf(size.x * 0.5, 620)
+	flag.custom_minimum_size.x = minf(size.x * 0.4, 460)
+	flag.size = Vector2.ZERO   # ป้ายบรรทัดเดียว — ย่อให้พอดีข้อความทุกครั้ง
 	flag.reset_size()
 	flag.position = Vector2((size.x - flag.size.x) * 0.5, maxf(d.position.y, 0) + 64)
 
@@ -302,7 +322,7 @@ func reset_scene() -> void:
 	show_flag("")
 	set_think(false)
 	set_patient("rest", "open")
-	if kind == "room":
+	if is_room():
 		set_nurse("clip")
 		nurse.position = NURSE_HOME
 		props.table.visible = false

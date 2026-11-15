@@ -27,7 +27,7 @@ func _ready() -> void:
 	var top := UI.hbox(12)
 	if mode != "resume":
 		top.add_child(UI.btn("◀ เมนู", func(): G.goto("lobby"), "", 13))
-	top.add_child(UI.title("เตรียมตัวก่อนเข้าห้องตรวจ", 28, Color.WHITE))
+	top.add_child(UI.title("เตรียมตัวก่อนเยี่ยมบ้าน" if G.is_comm() else "เตรียมตัวก่อนเข้าห้องตรวจ", 28, Color.WHITE))
 	top.add_child(UI.spacer())
 	for i in [1, 2]:
 		var b := UI.btn("① แฟ้มคัดกรองผู้ป่วย" if i == 1 else "② โต๊ะหยิบอุปกรณ์", func(): _set_step(i), "", 15)
@@ -40,12 +40,13 @@ func _ready() -> void:
 	var nh := UI.hbox(12)
 	npc.add_child(nh)
 	var pf := UI.frame("slot", 4)
-	pf.add_child(UI.pix(Px.portrait("nurse", "smile"), 1.6))
+	pf.add_child(UI.pix(Px.portrait("head", "smile"), 1.6))
 	nh.add_child(pf)
 	var nv := UI.vbox(0)
 	nv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	nv.add_child(UI.title("พยาบาลหัวหน้าเวร", 15, UI.GOLD))
-	var brief_t := "ก่อนเข้าไปประเมิน %s ต้องคัดกรองผู้ป่วยตามข้อบังคับของ MMSE ก่อนนะ แล้วหยิบอุปกรณ์ให้ครบ 6 ชิ้น — ของบนโต๊ะมีของหลอกปนอยู่ด้วย ระวังหยิบผิด!" % G.scn().name
+	nv.add_child(UI.title("พยาบาล รพ.สต. (พี่เลี้ยง)" if G.is_comm() else "พยาบาลหัวหน้าเวร", 15, UI.GOLD))
+	var brief_t := ("วันนี้เราจะไปเยี่ยมบ้าน %s นะ ก่อนออกไป" if G.is_comm() else "ก่อนเข้าไปประเมิน %s ") + "ต้องคัดกรองผู้ป่วยตามข้อบังคับของ MMSE ก่อนนะ แล้วหยิบอุปกรณ์ให้ครบ 6 ชิ้น — ของบนโต๊ะมีของหลอกปนอยู่ด้วย ระวังหยิบผิด!"
+	brief_t = brief_t % G.scn().name
 	if mode == "resume":
 		brief_t = "ลืมของใช่ไหม? หยิบให้ครบแล้วกลับไปประเมินต่อได้เลย"
 	nv.add_child(UI.wrap(UI.label(brief_t, 15, UI.DIALOG_TEXT)))
@@ -82,7 +83,7 @@ func _set_step(s: int) -> void:
 	if s == 1:
 		go_btn.text = "  ไปหยิบอุปกรณ์  ▶  "
 	else:
-		go_btn.text = "  กลับไปประเมินต่อ  ▶  " if mode == "resume" else "  เข้าห้องตรวจ  ▶  "
+		go_btn.text = "  กลับไปประเมินต่อ  ▶  " if mode == "resume" else ("  ออกเยี่ยมบ้าน  ▶  " if G.is_comm() else "  เข้าห้องตรวจ  ▶  ")
 
 
 # ---------- ขั้นที่ 1: แฟ้มคัดกรอง ----------
@@ -97,7 +98,7 @@ func _chart() -> Control:
 	ph.add_child(UI.pix(Px.portrait(G.scn().sex), 1.4))
 	var pv := UI.vbox(-2)
 	pv.add_child(UI.head("แบบคัดกรองก่อนใช้ MMSE", 20, UI.PAPER_INK))
-	pv.add_child(UI.label("ผู้ป่วย: %s อายุ %d ปี · %s" % [G.scn().name, G.scn().age, G.scn().ward], 13, Color("7a6656"), true))
+	pv.add_child(UI.label("ผู้ป่วย: %s อายุ %d ปี · %s" % [G.scn().name, G.scn().age, D.t("{ward}")], 13, Color("7a6656"), true))
 	ph.add_child(pv)
 	v.add_child(ph)
 	for q in D.SCREEN_QS:
@@ -125,7 +126,7 @@ func _chart() -> Control:
 	side.add_child(sv)
 	sv.add_child(UI.title("ชุดข้อที่จะประเมิน", 18, UI.GOLD))
 	if not G.setup.ans.has("pedu"):
-		sv.add_child(UI.wrap(UI.label("ตอบแบบคัดกรองให้ครบ ระบบจะจัดชุดข้อให้ตามระดับการศึกษาของผู้ป่วย", 13, Color("cfe3f7"))))
+		sv.add_child(UI.wrap(UI.label("ตอบแบบคัดกรองให้ครบ ระบบจะจัดชุดข้อให้ตามระดับการศึกษาของผู้ป่วย", 13, UI.INK_2)))
 	else:
 		var skip := G.is_illiterate()
 		var fl := UI.flow(4)
@@ -133,7 +134,7 @@ func _chart() -> Control:
 			var off: bool = skip and p.get("skip_illiterate", false)
 			var ch := UI.frame("slot" if off else "btn", 5)
 			ch.custom_minimum_size.x = 34
-			var l := UI.label(str(p.n), 13, Color("7f93a8") if off else Color.WHITE, true)
+			var l := UI.label(str(p.n), 13, UI.FAINT if off else Color.WHITE, true)
 			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			ch.add_child(l)
 			ch.tooltip_text = p.title + (" (ข้าม)" if off else "")
@@ -142,7 +143,7 @@ func _chart() -> Control:
 		sv.add_child(UI.title("คะแนนเต็ม %d" % G.plan_max(), 22, Color.WHITE))
 		sv.add_child(UI.wrap(UI.label("จุดตัด ≤ %d = สงสัยภาวะสมองเสื่อม" % D.cut_of(G.patient_edu()).cut, 14, UI.GOLD, true)))
 		if skip:
-			sv.add_child(UI.wrap(UI.label("ผู้ป่วยอ่านไม่ออกเขียนไม่ได้ → ข้ามข้อ 4 · 9 · 10", 13, Color("cfe3f7"))))
+			sv.add_child(UI.wrap(UI.label("ผู้ป่วยอ่านไม่ออกเขียนไม่ได้ → ข้ามข้อ 4 · 9 · 10", 13, UI.INK_2)))
 	h.add_child(side)
 	return h
 
@@ -178,7 +179,7 @@ func _table() -> Control:
 		ic.modulate.a = 0.25 if picked else 1.0
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		bv.add_child(ic)
-		var l := UI.label(it.t if not picked else "(อยู่ในถาด)", 12, UI.PAPER_INK if not picked else Color("a9c6e3"), true)
+		var l := UI.label(it.t if not picked else "(อยู่ในถาด)", 12, UI.PAPER_INK if not picked else UI.MUTED, true)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -216,10 +217,10 @@ func _table() -> Control:
 	var miss := G.missing_kit()
 	var wrong := G.wrong_kit()
 	if miss.is_empty() and wrong.is_empty():
-		msg.add_child(UI.title("ครบ 6 ชิ้น ถูกต้อง! พร้อมเข้าห้องตรวจ", 16, Color("5fd18f")))
+		msg.add_child(UI.title("ครบ 6 ชิ้น ถูกต้อง! พร้อมเข้าห้องตรวจ", 16, UI.OK))
 	else:
-		msg.add_child(UI.label("หยิบแล้ว %d ชิ้น" % picked_list.size(), 14, Color.WHITE, true))
-		msg.add_child(UI.wrap(UI.label("ถ้าขาดหรือหยิบผิด ยังเข้าไปได้ แต่ถึงข้อที่ต้องใช้จะต้องเดินกลับมาหยิบ", 12, Color("cfe3f7"))))
+		msg.add_child(UI.label("หยิบแล้ว %d ชิ้น" % picked_list.size(), 14, UI.INK, true))
+		msg.add_child(UI.wrap(UI.label("ถ้าขาดหรือหยิบผิด ยังเข้าไปได้ แต่ถึงข้อที่ต้องใช้จะต้องเดินกลับมาหยิบ", 12, UI.INK_2)))
 	th.add_child(msg)
 	v.add_child(tray)
 	return v

@@ -16,7 +16,7 @@ func setup(a: Dictionary) -> void:
 
 
 func _ready() -> void:
-	build_base("room")
+	build_base(G.room_kind())
 	P = D.S_PARTS[id]
 	part = D.part_of(id)
 	opts = G.shuffled(P.options)
@@ -45,7 +45,7 @@ func _menu() -> void:
 
 
 func _ward() -> void:
-	G.pop("ป้ายข้อมูลหอผู้ป่วย", D.t(D.WARD_TEXT))
+	G.pop(D.ward_title(), D.ward_text())
 
 
 func _pick(i: int) -> void:

@@ -12,7 +12,10 @@ const SCREENS := {
 	"part": "res://scripts/screens/sim_part.gd",
 	"interpret": "res://scripts/screens/interpret.gd",
 	"result": "res://scripts/screens/result.gd",
+	"wardrobe": "res://scripts/screens/wardrobe.gd",
+	"achieve": "res://scripts/screens/achieve.gd",
 }
+const NEED_LOGIN := ["lobby", "brief", "wardrobe", "achieve"]
 const GAME_SCREENS := ["walk", "time", "cmd", "part"]
 
 var content: Control
@@ -48,7 +51,7 @@ func _ready() -> void:
 	add_child(who_box)
 
 	fader = ColorRect.new()
-	fader.color = Color("0b1626")
+	fader.color = Color("f4f9fd")
 	fader.set_anchors_preset(Control.PRESET_FULL_RECT)
 	fader.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fader.modulate.a = 0.0
@@ -56,6 +59,8 @@ func _ready() -> void:
 
 	_build_toast()
 	_build_pop()
+	_build_ach()
+	Prof.unlocked.connect(_on_ach)
 	G.navigate.connect(_go)
 	G.toast.connect(_toast)
 	G.user_changed.connect(_render_who)
@@ -66,11 +71,11 @@ func _ready() -> void:
 func _render_who() -> void:
 	UI.clear(who_box)
 	var u := G.current_user()
-	who_box.visible = u != "" and current_name == "lobby"
+	who_box.visible = false   # หน้าเมนูเกมมีแถบบัญชี/เหรียญของตัวเองแล้ว
 	if u == "":
 		return
 	var chip := UI.frame("dialog", 8)
-	chip.add_child(UI.label("👤 " + u, 12, Color("cfe3f7"), true))
+	chip.add_child(UI.label("👤 " + u, 12, UI.INK_2, true))
 	who_box.add_child(chip)
 	who_box.add_child(UI.btn("ออกจากระบบ", func():
 		G.set_user("")
@@ -79,7 +84,7 @@ func _render_who() -> void:
 
 
 func _go(screen: String, args: Dictionary) -> void:
-	if (screen == "lobby" or screen == "brief") and G.current_user() == "":
+	if NEED_LOGIN.has(screen) and G.current_user() == "":
 		G.after_login = screen
 		_toast("เข้าสู่ระบบหรือสมัครสมาชิกก่อนเริ่มเล่น")
 		screen = "auth"
@@ -108,7 +113,7 @@ func _show(screen: String, args: Dictionary) -> void:
 # ---------- toast ----------
 func _build_toast() -> void:
 	toast_panel = UI.frame("dialog", 14)
-	toast_label = UI.label("", 16, Color.WHITE, true)
+	toast_label = UI.label("", 17, UI.INK, true)
 	toast_panel.add_child(toast_label)
 	toast_panel.visible = false
 	toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -129,10 +134,61 @@ func _toast(msg: String) -> void:
 	toast_tw.tween_callback(func(): toast_panel.visible = false)
 
 
+# ---------- ป้ายปลดล็อก Achievement (มีรูป) ----------
+var ach_panel: PanelContainer
+var ach_box: HBoxContainer
+var ach_queue: Array = []
+var ach_busy := false
+var ach_tw: Tween
+
+func _build_ach() -> void:
+	ach_panel = UI.frame("slot_on", 18)
+	ach_panel.visible = false
+	ach_panel.gui_input.connect(func(e):
+		if e is InputEventMouseButton and e.pressed:
+			_ach_next())
+	ach_box = UI.hbox(16)
+	ach_panel.add_child(ach_box)
+	add_child(ach_panel)
+
+func _on_ach(a: Dictionary) -> void:
+	ach_queue.append(a)
+	if not ach_busy:
+		_ach_next()
+
+func _ach_next() -> void:
+	if ach_tw:
+		ach_tw.kill()
+	if ach_queue.is_empty():
+		ach_busy = false
+		ach_panel.visible = false
+		return
+	ach_busy = true
+	var a: Dictionary = ach_queue.pop_front()
+	UI.clear(ach_box)
+	ach_box.add_child(UI.ach_icon(a, true, 4.0))
+	var v := UI.vbox(2)
+	v.add_child(UI.title("🏆 ปลดล็อก Achievement!", 18, UI.WARN, Color.WHITE))
+	v.add_child(UI.head(a.t, 26, UI.INK))
+	v.add_child(UI.label(a.desc, 14, UI.INK_2))
+	v.add_child(UI.label("รางวัล: " + Prof.reward_text(a), 15, UI.OK, true))
+	ach_box.add_child(v)
+	ach_panel.visible = true
+	move_child(ach_panel, get_child_count() - 1)
+	ach_panel.reset_size()
+	ach_panel.position = Vector2((size.x - ach_panel.size.x) * 0.5, -ach_panel.size.y)
+	S.play("star")
+	ach_tw = create_tween()
+	ach_tw.tween_property(ach_panel, "position:y", 70.0, 0.35).set_trans(Tween.TRANS_BACK)
+	ach_tw.tween_interval(3.4)
+	ach_tw.tween_property(ach_panel, "position:y", -ach_panel.size.y - 10, 0.3)
+	ach_tw.tween_callback(_ach_next)
+
+
 # ---------- popup ----------
 func _build_pop() -> void:
 	pop_back = ColorRect.new()
-	pop_back.color = Color(0.03, 0.06, 0.12, 0.62)
+	pop_back.color = Color(0.2, 0.3, 0.42, 0.38)
 	pop_back.set_anchors_preset(Control.PRESET_FULL_RECT)
 	pop_back.visible = false
 	pop_back.gui_input.connect(func(e):

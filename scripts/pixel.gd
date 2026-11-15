@@ -152,64 +152,116 @@ static func talk_icon() -> ImageTexture:
 # ============================================================
 # ภาพหน้าตัวละคร (portrait) 40×40 สำหรับกล่องบทสนทนา
 # ============================================================
-static func portrait(who: String, expr: String = "normal") -> ImageTexture:
+static func portrait(who: String, expr: String = "normal", of: Dictionary = {}) -> ImageTexture:
+	if who == "nurse" or who == "head":
+		var o: Dictionary = _of(of) if who == "nurse" else {"sex": "f", "suit": "suit_white", "hat": "hat_cap", "shoes": "shoes_white", "acc": "acc_none"}
+		return cached("pt_nurse_%s_%s" % [expr, _sig(o)], func(): return _nurse_portrait(expr, o))
 	return cached("pt_%s_%s" % [who, expr], func(): return _portrait_img(who, expr))
 
-static func _portrait_img(who: String, expr: String) -> Image:
+## ภาพหน้าพยาบาลในกล่องบทสนทนา (ตามชุดที่สวม) — "head" = พยาบาลหัวหน้าเวร (ชุดมาตรฐาน)
+static func _nurse_portrait(expr: String, o: Dictionary) -> Image:
 	var img := blank(40, 40)
-	if who == "nurse":
-		# ไหล่ + ชุดขาว ปกน้ำเงิน โลโก้
-		for y in range(30, 40):
-			var hw := 13 + (y - 30) / 2
-			r(img, 20 - hw, y, hw * 2, 1, WHITE)
-			p(img, 20 + hw - 1, y, WHITE_SH); p(img, 20 + hw - 2, y, WHITE_SH)
-		r(img, 17, 26, 6, 5, SKIN)
-		r(img, 17, 27, 6, 1, SKIN_SH)
-		r(img, 18, 30, 4, 2, SKIN)
-		line(img, 13, 30, 23, 39, TRIM, 2)
-		line(img, 27, 30, 24, 34, TRIM, 2)
+	var male: bool = o.get("sex", "f") == "m"
+	var su: Dictionary = SUITS.get(o.get("suit", "suit_white"), SUITS.suit_white)
+	var white_suit: bool = o.get("suit", "suit_white") == "suit_white"
+	for y in range(30, 40):
+		var hw := 13 + (y - 30) / 2
+		r(img, 20 - hw, y, hw * 2, 1, su.main)
+		p(img, 20 + hw - 1, y, su.sh); p(img, 20 + hw - 2, y, su.sh)
+	if su.has("vest"):
+		for y in range(31, 40):
+			r(img, 6 + (y - 31) / 3, y, 8, 1, su.vest)
+			r(img, 26 - (y - 31) / 3, y, 8, 1, su.vest)
+	r(img, 17, 26, 6, 5, SKIN)
+	r(img, 17, 27, 6, 1, SKIN_SH)
+	r(img, 18, 30, 4, 2, SKIN)
+	if white_suit:
+		line(img, 13, 30, 23, 39, su.trim, 2)
+		line(img, 27, 30, 24, 34, su.trim, 2)
 		ell(img, 10.5, 35.5, 3, 3, LOGO_RING)
 		ell(img, 10.5, 35.5, 1.8, 1.8, LOGO_RED)
 		p(img, 10, 34, WHITE)
-		# ผมด้านหลัง
+	else:
+		line(img, 15, 30, 20, 36, su.trim)
+		line(img, 25, 30, 20, 36, su.trim)
+	if o.get("acc", "") == "acc_stetho":
+		line(img, 14, 30, 12, 39, Color("5d6b7a"))
+		line(img, 26, 30, 28, 39, Color("5d6b7a"))
+	# ผม
+	if male:
+		ell(img, 20, 15.5, 12, 11, HAIR)
+		r(img, 8, 14, 3, 7, HAIR)
+		r(img, 29, 14, 3, 7, HAIR)
+	else:
 		ell(img, 20, 17, 13, 13, HAIR)
 		r(img, 7, 17, 4, 13, HAIR)
 		r(img, 29, 17, 4, 13, HAIR)
-		# หน้า
-		ell(img, 20, 19.5, 9.5, 10, SKIN)
-		for y in range(13, 27):
-			p(img, 28, y, SKIN_SH)
-		# หน้าม้า
-		r(img, 11, 9, 18, 4, HAIR)
+	ell(img, 20, 19.5, 9.5, 10, SKIN)
+	for y in range(13, 27):
+		p(img, 28, y, SKIN_SH)
+	r(img, 11, 9, 18, 4, HAIR)
+	if male:
+		for x in [12, 16, 22, 27]:
+			p(img, x, 13, HAIR)
+	else:
 		for x in [12, 13, 16, 17, 22, 23, 26, 27]:
 			p(img, x, 13, HAIR)
-		p(img, 14, 10, HAIR_HI); p(img, 15, 10, HAIR_HI); p(img, 16, 9, HAIR_HI); p(img, 24, 10, HAIR_HI)
 		p(img, 9, 18, HAIR_HI); p(img, 9, 19, HAIR_HI)
-		# คิ้ว ตา
-		r(img, 13, 16, 4, 1, HAIR); r(img, 23, 16, 4, 1, HAIR)
-		if expr == "blink":
-			r(img, 13, 20, 4, 1, EYE); r(img, 23, 20, 4, 1, EYE)
-		else:
-			r(img, 14, 18, 3, 4, EYE); r(img, 23, 18, 3, 4, EYE)
-			p(img, 15, 18, Color.WHITE); p(img, 24, 18, Color.WHITE)
+	p(img, 14, 10, HAIR_HI); p(img, 15, 10, HAIR_HI); p(img, 16, 9, HAIR_HI); p(img, 24, 10, HAIR_HI)
+	# คิ้ว ตา
+	r(img, 13, 16, 4, 1, HAIR); r(img, 23, 16, 4, 1, HAIR)
+	if expr == "blink":
+		r(img, 13, 20, 4, 1, EYE); r(img, 23, 20, 4, 1, EYE)
+	else:
+		r(img, 14, 18, 3, 4, EYE); r(img, 23, 18, 3, 4, EYE)
+		p(img, 15, 18, Color.WHITE); p(img, 24, 18, Color.WHITE)
+		if not male:
 			p(img, 13, 18, EYE); p(img, 26, 18, EYE)
+	if not male:
 		r(img, 12, 23, 2, 1, BLUSH); r(img, 26, 23, 2, 1, BLUSH)
-		p(img, 20, 22, SKIN_SH)
-		if expr == "talk":
-			r(img, 18, 25, 4, 2, Color("8a3b35")); r(img, 19, 26, 2, 1, Color("d9786e"))
-		elif expr == "smile":
-			r(img, 18, 25, 4, 1, MOUTH); p(img, 17, 24, MOUTH); p(img, 22, 24, MOUTH)
-		else:
-			r(img, 18, 25, 4, 1, MOUTH)
-		# หมวกพยาบาลขาว ไม่มีขีด
-		r(img, 12, 3, 16, 1, WHITE)
-		r(img, 11, 4, 18, 4, WHITE)
-		r(img, 11, 8, 18, 1, WHITE_SH)
-		r(img, 14, 5, 12, 1, WHITE_SH)
-		r(img, 25, 4, 4, 4, WHITE_SH)
-		r(img, 12, 3, 4, 1, Color.WHITE)
-		return outline(img)
+	p(img, 20, 22, SKIN_SH)
+	if expr == "talk":
+		r(img, 18, 25, 4, 2, Color("8a3b35")); r(img, 19, 26, 2, 1, Color("d9786e"))
+	elif expr == "smile":
+		r(img, 18, 25, 4, 1, MOUTH); p(img, 17, 24, MOUTH); p(img, 22, 24, MOUTH)
+	else:
+		r(img, 18, 25, 4, 1, MOUTH)
+	if o.get("acc", "") == "acc_glasses":
+		var fc := Color("23262e")
+		for gx in [12, 22]:
+			r(img, gx, 17, 6, 1, fc); r(img, gx, 22, 6, 1, fc)
+			r(img, gx, 17, 1, 6, fc); r(img, gx + 5, 17, 1, 6, fc)
+		r(img, 18, 18, 4, 1, fc)
+	# หมวก
+	match o.get("hat", "hat_cap"):
+		"hat_cap":
+			r(img, 12, 3, 16, 1, WHITE)
+			r(img, 11, 4, 18, 4, WHITE)
+			r(img, 11, 8, 18, 1, WHITE_SH)
+			r(img, 14, 5, 12, 1, WHITE_SH)
+			r(img, 25, 4, 4, 4, WHITE_SH)
+			r(img, 12, 3, 4, 1, Color.WHITE)
+		"hat_scrub":
+			ell(img, 20, 9, 13, 7, Color("8fc3ea"))
+			r(img, 7, 11, 26, 2, Color("6aa6d6"))
+			for d in [Vector2i(13, 6), Vector2i(19, 4), Vector2i(25, 6), Vector2i(16, 9), Vector2i(23, 9)]:
+				r(img, d.x, d.y, 2, 1, Color("e6f3fb"))
+		"hat_band":
+			r(img, 9, 10, 22, 2, Color("f28cb0"))
+			r(img, 25, 5, 3, 4, Color("f28cb0")); r(img, 30, 5, 3, 4, Color("f28cb0")); r(img, 28, 6, 2, 2, Color("d06a90"))
+		"hat_sun":
+			ell(img, 20, 6, 10, 6, Color("e8cf8a"))
+			r(img, 1, 10, 38, 3, Color("d9b866"))
+			r(img, 1, 12, 38, 1, Color("b89a4c"))
+			r(img, 10, 9, 20, 1, Color("b0503a"))
+		"hat_helmet":
+			ell(img, 20, 10, 14, 9, Color("f2c230"))
+			r(img, 5, 13, 30, 3, Color("c8961c"))
+			r(img, 19, 1, 3, 12, Color("fff2b0"))
+	return outline(img)
 
+static func _portrait_img(who: String, expr: String) -> Image:
+	var img := blank(40, 40)
 	# ผู้ป่วย
 	var female := who == "f"
 	var skin := Color("e2ad88")
@@ -286,10 +338,10 @@ static func ui_frame(kind: String) -> ImageTexture:
 		var o := Color("13233a")
 		match kind:
 			"dialog":
-				r(img, 0, 0, 12, 12, o)
-				r(img, 1, 1, 10, 10, Color("1b3150"))
-				r(img, 2, 2, 8, 8, Color("7fb2e0"))
-				r(img, 3, 3, 6, 6, Color("1b3150"))
+				r(img, 0, 0, 12, 12, Color("3f7fc4"))
+				r(img, 1, 1, 10, 10, Color("fffdf6"))
+				r(img, 2, 2, 8, 8, Color("a9d2f2"))
+				r(img, 3, 3, 6, 6, Color("fffdf6"))
 				p(img, 0, 0, Color(0, 0, 0, 0)); p(img, 11, 0, Color(0, 0, 0, 0)); p(img, 0, 11, Color(0, 0, 0, 0)); p(img, 11, 11, Color(0, 0, 0, 0))
 			"paper":
 				r(img, 0, 0, 12, 12, Color("5a3a22"))
@@ -317,10 +369,10 @@ static func ui_frame(kind: String) -> ImageTexture:
 					r(img, 1, 1, 10, 2, base.darkened(0.3))
 				p(img, 0, 0, Color(0, 0, 0, 0)); p(img, 11, 0, Color(0, 0, 0, 0)); p(img, 0, 11, Color(0, 0, 0, 0)); p(img, 11, 11, Color(0, 0, 0, 0))
 			"slot":
-				r(img, 0, 0, 12, 12, Color("2c3e55"))
-				r(img, 1, 1, 10, 10, Color("4a6280"))
-				r(img, 1, 1, 10, 1, Color("22334a"))
-				r(img, 1, 1, 1, 10, Color("22334a"))
+				r(img, 0, 0, 12, 12, Color("8fb3d1"))
+				r(img, 1, 1, 10, 10, Color("e4f1fb"))
+				r(img, 1, 1, 10, 1, Color("c5ddef"))
+				r(img, 1, 1, 1, 10, Color("c5ddef"))
 			"slot_on":
 				r(img, 0, 0, 12, 12, Color("13233a"))
 				r(img, 1, 1, 10, 10, Color("ffe08a"))
@@ -329,8 +381,8 @@ static func ui_frame(kind: String) -> ImageTexture:
 			"choice":
 				r(img, 0, 0, 12, 12, Color(1, 1, 1, 0.0))
 			"choice_hover":
-				r(img, 0, 0, 12, 12, Color(1, 1, 1, 0.14))
-				r(img, 0, 0, 12, 1, Color("ffe08a")); r(img, 0, 11, 12, 1, Color("ffe08a"))
+				r(img, 0, 0, 12, 12, Color("dcefff"))
+				r(img, 0, 0, 12, 1, Color("3f86d6")); r(img, 0, 11, 12, 1, Color("3f86d6"))
 			_:  # panel
 				r(img, 0, 0, 12, 12, o)
 				r(img, 1, 1, 10, 10, Color("f4f8fb"))
@@ -385,18 +437,58 @@ static func logo_pixel(size: int) -> ImageTexture:
 # พยาบาล (นักศึกษาพยาบาล) 32×64
 # pose: idle · walk1 · walk2 · offer · tray · clip · show · point
 # ============================================================
-static func nurse(pose: String = "idle", blink: bool = false) -> ImageTexture:
-	return cached("nurse_%s_%s" % [pose, blink], func(): return _nurse_img(pose, blink))
+## ชุดที่สวม (ระบบแต่งตัว) — of ว่าง = ใช้ชุดของผู้เล่นปัจจุบัน
+const SUITS := {
+	"suit_white": {"main": Color("fbfcfd"), "sh": Color("d3dde8"), "sh2": Color("b8c6d4"), "trim": Color("1f5fae"), "pants": Color("fbfcfd")},
+	"suit_sky": {"main": Color("a9d6f5"), "sh": Color("86bde6"), "sh2": Color("6aa6d6"), "trim": Color("4f8fcc"), "pants": Color("a9d6f5")},
+	"suit_mint": {"main": Color("a8e6cf"), "sh": Color("84cfb2"), "sh2": Color("68b899"), "trim": Color("3f9e7a"), "pants": Color("a8e6cf")},
+	"suit_pink": {"main": Color("f7c1d4"), "sh": Color("e79fb8"), "sh2": Color("d987a3"), "trim": Color("d06a90"), "pants": Color("f7c1d4")},
+	"suit_lilac": {"main": Color("d3c2f2"), "sh": Color("b9a3e3"), "sh2": Color("a08bd0"), "trim": Color("8a6fc4"), "pants": Color("d3c2f2")},
+	"suit_gold": {"main": Color("f6d872"), "sh": Color("deb94c"), "sh2": Color("c9a33a"), "trim": Color("a87f1e"), "pants": Color("f6d872")},
+	"suit_comm": {"main": Color("fbfcfd"), "sh": Color("d3dde8"), "sh2": Color("b8c6d4"), "trim": Color("3f8a5a"), "pants": Color("3d5270"), "vest": Color("4e9e72")},
+}
+const SHOES := {
+	"shoes_white": [Color("fbfcfd"), Color("c3cfdb")], "shoes_black": [Color("3a3f4d"), Color("22262f")],
+	"shoes_sneaker": [Color("4a90d9"), Color("f4f8fb")], "shoes_pink": [Color("f28cb0"), Color("d06a90")],
+}
+static var _of_cache := {}
 
-static func _nurse_img(pose: String, blink: bool) -> Image:
+static func _of(of: Dictionary = {}) -> Dictionary:
+	if not of.is_empty():
+		return of
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree and tree.root.has_node("Prof"):
+		return tree.root.get_node("Prof").outfit()
+	return {"sex": "f", "suit": "suit_white", "hat": "hat_cap", "shoes": "shoes_white", "acc": "acc_none"}
+
+static func _sig(of: Dictionary) -> String:
+	return "%s-%s-%s-%s-%s" % [of.get("sex", "f"), of.get("suit", ""), of.get("hat", ""), of.get("shoes", ""), of.get("acc", "")]
+
+static func outfit_changed() -> void:
+	pass   # คีย์แคชผูกกับชุดอยู่แล้ว ไม่ต้องล้าง
+
+
+static func nurse(pose: String = "idle", blink: bool = false, of: Dictionary = {}) -> ImageTexture:
+	var o := _of(of)
+	return cached("nurse_%s_%s_%s" % [pose, blink, _sig(o)], func(): return _nurse_img(pose, blink, o))
+
+static func _nurse_img(pose: String, blink: bool, o: Dictionary) -> Image:
 	var img := blank(32, 64)
+	var male: bool = o.get("sex", "f") == "m"
+	var su: Dictionary = SUITS.get(o.get("suit", "suit_white"), SUITS.suit_white)
+	var main: Color = su.main
+	var sh: Color = su.sh
+	var sh2: Color = su.sh2
+	var trim: Color = su.trim
+	var dress: bool = (not male) and o.get("suit", "suit_white") == "suit_white"
+	var shoe: Array = SHOES.get(o.get("shoes", "shoes_white"), SHOES.shoes_white)
 	var walk := 0
 	if pose == "walk1":
 		walk = 1
 	elif pose == "walk2":
 		walk = -1
 
-	# ---- ขา · ถุงเท้าขาว · รองเท้าพยาบาลขาว ----
+	# ---- ขา · ถุงเท้า · รองเท้า ----
 	var lx := 12
 	var rx := 18
 	var ly := 0
@@ -405,19 +497,30 @@ static func _nurse_img(pose: String, blink: bool) -> Image:
 		lx = 11; rx = 19; ry = -1
 	elif walk == -1:
 		lx = 11; rx = 19; ly = -1
-	r(img, lx, 54 + ly, 3, 2, SKIN)
-	r(img, rx, 54 + ry, 3, 2, SKIN)
+	if dress:
+		r(img, lx, 54 + ly, 3, 2, SKIN)
+		r(img, rx, 54 + ry, 3, 2, SKIN)
+	else:
+		# กางเกง (ผู้ชาย หรือชุดสครับ)
+		var pc: Color = su.pants
+		r(img, 10, 40, 13, 3, pc)
+		for y in range(42, 58):
+			r(img, lx - 1, y + ly, 5, 1, pc)
+			r(img, rx - 1, y + ry, 5, 1, pc)
+			p(img, lx + 3, y + ly, pc.darkened(0.12))
+			p(img, rx + 3, y + ry, pc.darkened(0.12))
 	r(img, lx, 56 + ly, 3, 4, WHITE)            # ถุงเท้าขาว
 	r(img, rx, 56 + ry, 3, 4, WHITE)
 	p(img, lx, 56 + ly, WHITE_SH)
 	p(img, rx + 2, 56 + ry, WHITE_SH)
-	r(img, lx - 1, 60 + ly, 5, 2, WHITE)        # รองเท้าขาว
-	r(img, rx - 1, 60 + ry, 5, 2, WHITE)
-	r(img, lx - 1, 62 + ly, 5, 1, SHOE_SH)
-	r(img, rx - 1, 62 + ry, 5, 1, SHOE_SH)
+	r(img, lx - 1, 60 + ly, 5, 2, shoe[0])        # รองเท้า
+	r(img, rx - 1, 60 + ry, 5, 2, shoe[0])
+	r(img, lx - 1, 62 + ly, 5, 1, shoe[1])
+	r(img, rx - 1, 62 + ry, 5, 1, shoe[1])
 
-	# ---- ชุดกระโปรงขาว ----
-	for y in range(22, 55):
+	# ---- ลำตัว: ชุดกระโปรง หรือ เสื้อ ----
+	var bottom := 55 if dress else 42
+	for y in range(22, bottom):
 		var half := 6
 		if y < 24:
 			half = 5
@@ -427,50 +530,76 @@ static func _nurse_img(pose: String, blink: bool) -> Image:
 			half = 5
 		else:
 			half = 5 + int((y - 41) / 4.0)
-		r(img, 16 - half, y, half * 2 + 1, 1, WHITE)
-	# เงาด้านข้าง + รอยป้ายหน้า (ชุดแบบป้าย)
-	for y in range(24, 55):
+		r(img, 16 - half, y, half * 2 + 1, 1, main)
+	for y in range(24, bottom):
 		var half2 := 6 if y < 36 else (5 if y < 41 else 5 + int((y - 41) / 4.0))
-		p(img, 16 + half2, y, WHITE_SH)
-		p(img, 16 - half2, y, WHITE_SH)
-	line(img, 20, 32, 20, 54, WHITE_SH)
-	# ชายกระโปรง
-	r(img, 8, 54, 17, 1, WHITE_SH)
-	# กระเป๋า/ฝาปิดที่เอว
-	r(img, 11, 40, 3, 1, WHITE_SH2)
-	r(img, 21, 40, 3, 1, WHITE_SH2)
-
-	# ---- คอเสื้อ V + ปกป้ายขลิบน้ำเงิน ----
+		p(img, 16 + half2, y, sh)
+		p(img, 16 - half2, y, sh)
+		p(img, 16 + half2 - 1, y, sh)
+		if y > 42:
+			p(img, 16 + half2 - 2, y, sh)
+		p(img, 16 - half2 + 1, y, main.lightened(0.3))
+	r(img, 11, 34, 11, 1, sh)                    # เงาใต้อก
+	if dress:
+		line(img, 20, 32, 20, 54, sh)
+		r(img, 8, 54, 17, 1, sh)
+		r(img, 11, 40, 3, 1, sh2)
+		r(img, 21, 40, 3, 1, sh2)
+		line(img, 13, 44, 12, 53, sh)              # จีบกระโปรง
+		line(img, 17, 45, 17, 53, sh)
+	else:
+		r(img, 11, 40, 11, 1, sh2)                 # ชายเสื้อ
+		if male and o.get("suit", "") == "suit_white":
+			line(img, 16, 26, 16, 39, sh)          # กระดุมเสื้อ
+	if su.has("vest"):
+		var vc: Color = su.vest
+		for y in range(24, 41):
+			r(img, 10, y, 4, 1, vc)
+			r(img, 19, y, 4, 1, vc)
+		r(img, 10, 40, 13, 1, vc.darkened(0.2))
+	# ---- คอเสื้อ ----
 	r(img, 14, 22, 5, 2, SKIN)
 	p(img, 15, 24, SKIN); p(img, 16, 24, SKIN); p(img, 17, 24, SKIN)
 	p(img, 16, 25, SKIN)
-	line(img, 11, 22, 20, 31, TRIM, 2)          # ปกยาวจากไหล่ซ้าย (ของผู้ดู) ป้ายไปขวา
-	line(img, 21, 22, 18, 26, TRIM, 2)          # ปกสั้นอีกข้าง
-	p(img, 21, 31, TRIM_D)
+	if o.get("suit", "suit_white") == "suit_white":
+		line(img, 11, 22, 20, 31, trim, 2)         # ปกป้ายขลิบน้ำเงิน
+		line(img, 21, 22, 18, 26, trim, 2)
+		p(img, 21, 31, TRIM_D)
+		# โลโก้คณะที่อก
+		var lg := Vector2i(11, 27)
+		r(img, lg.x + 1, lg.y, 2, 1, LOGO_RING)
+		r(img, lg.x, lg.y + 1, 1, 2, LOGO_RING)
+		r(img, lg.x + 3, lg.y + 1, 1, 2, LOGO_RING)
+		r(img, lg.x + 1, lg.y + 3, 2, 1, LOGO_RING)
+		p(img, lg.x + 1, lg.y + 1, WHITE)
+		p(img, lg.x + 2, lg.y + 1, LOGO_RED)
+		p(img, lg.x + 1, lg.y + 2, LOGO_RED)
+		p(img, lg.x + 2, lg.y + 2, LOGO_RED)
+	else:
+		line(img, 13, 22, 16, 26, trim)            # คอวี
+		line(img, 19, 22, 16, 26, trim)
+		r(img, 19, 29, 3, 3, sh)                   # กระเป๋าอก
 
-	# ---- โลโก้คณะที่อก ----
-	var lg := Vector2i(11, 27)
-	r(img, lg.x + 1, lg.y, 2, 1, LOGO_RING)
-	r(img, lg.x, lg.y + 1, 1, 2, LOGO_RING)
-	r(img, lg.x + 3, lg.y + 1, 1, 2, LOGO_RING)
-	r(img, lg.x + 1, lg.y + 3, 2, 1, LOGO_RING)
-	p(img, lg.x + 1, lg.y + 1, WHITE)
-	p(img, lg.x + 2, lg.y + 1, LOGO_RED)
-	p(img, lg.x + 1, lg.y + 2, LOGO_RED)
-	p(img, lg.x + 2, lg.y + 2, LOGO_RED)
-
-	# ---- แขนเสื้อสั้น ปลายแขนน้ำเงิน + แขน ----
+	# ---- แขน ----
 	var swing := walk
-	_nurse_arm(img, "L", pose, swing)
-	_nurse_arm(img, "R", pose, -swing)
+	_nurse_arm(img, "L", pose, swing, main, trim)
+	_nurse_arm(img, "R", pose, -swing, main, trim)
 
 	# ---- ศีรษะ ----
-	ell(img, 16, 13.5, 7.5, 7.5, HAIR)           # ผม
-	r(img, 9, 13, 2, 8, HAIR)
-	r(img, 22, 13, 2, 8, HAIR)
-	ell(img, 16, 15.5, 5.6, 6.2, SKIN)           # หน้า
+	if male:
+		ell(img, 16, 12.5, 7.2, 6.5, HAIR)
+		r(img, 9, 12, 2, 5, HAIR)
+		r(img, 22, 12, 2, 5, HAIR)
+	else:
+		ell(img, 16, 13.5, 7.5, 7.5, HAIR)
+		r(img, 9, 13, 2, 8, HAIR)
+		r(img, 22, 13, 2, 8, HAIR)
+	ell(img, 16, 15.5, 5.6, 6.2, SKIN)
 	r(img, 11, 9, 11, 2, HAIR)                   # หน้าม้า
-	p(img, 15, 11, HAIR); p(img, 16, 11, HAIR); p(img, 12, 11, HAIR); p(img, 20, 11, HAIR)
+	if male:
+		p(img, 12, 11, HAIR); p(img, 20, 11, HAIR)
+	else:
+		p(img, 15, 11, HAIR); p(img, 16, 11, HAIR); p(img, 12, 11, HAIR); p(img, 20, 11, HAIR)
 	p(img, 13, 9, HAIR_HI); p(img, 14, 9, HAIR_HI)
 	if blink:
 		r(img, 13, 15, 2, 1, EYE)
@@ -478,39 +607,69 @@ static func _nurse_img(pose: String, blink: bool) -> Image:
 	else:
 		r(img, 13, 14, 2, 2, EYE)
 		r(img, 18, 14, 2, 2, EYE)
-	p(img, 12, 17, BLUSH); p(img, 20, 17, BLUSH)
+		p(img, 14, 14, Color.WHITE); p(img, 19, 14, Color.WHITE)
+	if not male:
+		p(img, 12, 17, BLUSH); p(img, 20, 17, BLUSH)
 	r(img, 15, 18, 3, 1, MOUTH)
 	p(img, 11, 18, SKIN_SH); p(img, 21, 18, SKIN_SH)
-	# มวยผมด้านหลัง
-	ell(img, 16, 5.5, 3.5, 2.2, HAIR)
+	p(img, 14, 22, SKIN_SH); p(img, 18, 22, SKIN_SH)
+	r(img, 21, 13, 1, 6, SKIN_SH)
+	p(img, 12, 9, HAIR_HI); p(img, 18, 9, HAIR_HI)
+	if not male:
+		p(img, 10, 14, HAIR_HI); p(img, 10, 15, HAIR_HI)
+		r(img, 22, 17, 2, 4, Color("2a1c17"))
 
-	# ---- หมวกพยาบาลสีขาว ไม่มีขีด ----
-	r(img, 11, 4, 11, 1, WHITE)
-	r(img, 10, 5, 13, 2, WHITE)
-	r(img, 10, 7, 13, 1, WHITE_SH)
-	r(img, 12, 3, 9, 1, WHITE)
-	p(img, 10, 5, WHITE_SH); p(img, 22, 5, WHITE_SH)
-	r(img, 13, 5, 7, 1, WHITE_SH)                # รอยพับของหมวก (ไม่ใช่ขีดสี)
+	# ---- หมวก / ที่คาดผม ----
+	var hat: String = o.get("hat", "hat_cap")
+	match hat:
+		"hat_cap":
+			if not male:
+				ell(img, 16, 5.5, 3.5, 2.2, HAIR)   # มวยผมด้านหลัง
+			r(img, 11, 4, 11, 1, WHITE)
+			r(img, 10, 5, 13, 2, WHITE)
+			r(img, 10, 7, 13, 1, WHITE_SH)
+			r(img, 12, 3, 9, 1, WHITE)
+			p(img, 10, 5, WHITE_SH); p(img, 22, 5, WHITE_SH)
+			r(img, 13, 5, 7, 1, WHITE_SH)
+			r(img, 11, 3, 3, 1, Color.WHITE)
+			r(img, 20, 6, 3, 2, WHITE_SH)
+		"hat_scrub":
+			ell(img, 16, 8, 8, 4.6, Color("8fc3ea"))
+			r(img, 8, 9, 17, 2, Color("6aa6d6"))
+			for d in [Vector2i(12, 6), Vector2i(16, 5), Vector2i(20, 6), Vector2i(14, 8), Vector2i(18, 8)]:
+				p(img, d.x, d.y, Color("e6f3fb"))
+		"hat_band":
+			if not male:
+				ell(img, 16, 5.5, 3.5, 2.2, HAIR)
+			r(img, 9, 8, 15, 2, Color("f28cb0"))
+			r(img, 20, 5, 2, 3, Color("f28cb0")); r(img, 23, 5, 2, 3, Color("f28cb0")); r(img, 22, 6, 1, 2, Color("d06a90"))
+		"hat_sun":
+			ell(img, 16, 6.5, 6.5, 4.2, Color("e8cf8a"))
+			r(img, 3, 9, 27, 2, Color("d9b866"))
+			r(img, 3, 10, 27, 1, Color("b89a4c"))
+			r(img, 10, 8, 13, 1, Color("b0503a"))
+		"hat_helmet":
+			ell(img, 16, 8.5, 8.6, 6.2, Color("f2c230"))
+			r(img, 7, 11, 19, 2, Color("c8961c"))
+			r(img, 15, 3, 2, 8, Color("fff2b0"))
+			p(img, 11, 6, Color("fff2b0"))
+		_:
+			if not male:
+				ell(img, 16, 5.5, 3.5, 2.2, HAIR)
 
-	# ---- แสงเงาเพิ่มมิติ ----
-	for y in range(24, 54):
-		var hw := 6 if y < 36 else (5 if y < 41 else 5 + int((y - 41) / 4.0))
-		p(img, 16 + hw - 1, y, WHITE_SH)                 # เงาด้านขวาของชุด
-		if y > 42:
-			p(img, 16 + hw - 2, y, WHITE_SH)
-		p(img, 16 - hw + 1, y, Color.WHITE)              # ขอบรับแสงด้านซ้าย
-	r(img, 11, 34, 11, 1, WHITE_SH)                      # เงาใต้อก
-	line(img, 13, 44, 12, 53, WHITE_SH)                  # จีบกระโปรง
-	line(img, 17, 45, 17, 53, WHITE_SH)
-	p(img, 14, 22, SKIN_SH); p(img, 18, 22, SKIN_SH)     # เงาใต้คาง
-	r(img, 21, 13, 1, 6, SKIN_SH)                        # เงาแก้มขวา
-	p(img, 12, 9, HAIR_HI); p(img, 13, 9, HAIR_HI); p(img, 18, 9, HAIR_HI)
-	p(img, 10, 14, HAIR_HI); p(img, 10, 15, HAIR_HI)
-	r(img, 22, 17, 2, 4, Color("2a1c17"))                # ผมด้านเงา
-	if not blink:
-		p(img, 14, 14, Color.WHITE); p(img, 19, 14, Color.WHITE)  # ประกายตา
-	r(img, 11, 3, 3, 1, Color.WHITE)                     # ไฮไลต์หมวก
-	r(img, 20, 6, 3, 2, WHITE_SH)
+	# ---- เครื่องประดับ ----
+	match o.get("acc", "acc_none"):
+		"acc_stetho":
+			var gc := Color("5d6b7a")
+			line(img, 12, 23, 13, 31, gc)
+			line(img, 20, 23, 19, 30, gc)
+			ell(img, 19, 32, 1.6, 1.6, Color("aab7c4"))
+			p(img, 19, 32, Color("e6edf3"))
+		"acc_glasses":
+			var fc := Color("23262e")
+			r(img, 12, 13, 4, 1, fc); r(img, 12, 16, 4, 1, fc); p(img, 12, 14, fc); p(img, 12, 15, fc); p(img, 15, 14, fc); p(img, 15, 15, fc)
+			r(img, 17, 13, 4, 1, fc); r(img, 17, 16, 4, 1, fc); p(img, 17, 14, fc); p(img, 17, 15, fc); p(img, 20, 14, fc); p(img, 20, 15, fc)
+			p(img, 16, 14, fc)
 
 	# ---- ของในมือ ----
 	if pose == "tray":
@@ -527,12 +686,12 @@ static func _nurse_img(pose: String, blink: bool) -> Image:
 		r(img, 5, 34, 3, 1, Color("9aa8b4")); r(img, 5, 36, 3, 1, Color("9aa8b4"))
 	return outline(img)
 
-static func _nurse_arm(img: Image, side: String, pose: String, swing: int) -> void:
+static func _nurse_arm(img: Image, side: String, pose: String, swing: int, main: Color = WHITE, trim: Color = TRIM) -> void:
 	var sx := 6 if side == "L" else 23          # ไหล่ด้านซ้าย/ขวาของภาพ
 	var ax := 6 if side == "L" else 24          # แนวแขนที่ห้อยลง
-	# แขนเสื้อสั้นสีขาว + ขลิบน้ำเงิน
-	r(img, sx, 23, 3, 6, WHITE)
-	r(img, sx, 29, 3, 2, TRIM)
+	# แขนเสื้อสั้น + ขลิบปลายแขน
+	r(img, sx, 23, 3, 6, main)
+	r(img, sx, 29, 3, 2, trim)
 	var ext := (side == "R" and (pose == "offer" or pose == "show" or pose == "point"))
 	if ext:
 		# ยื่นแขนไปข้างหน้า (ทางขวาของภาพ)
@@ -551,6 +710,22 @@ static func _nurse_arm(img: Image, side: String, pose: String, swing: int) -> vo
 		return
 	r(img, ax, 31 + swing, 2, 9, SKIN)
 	r(img, ax, 40 + swing, 2, 2, SKIN_SH)
+
+
+## เหรียญตราชั่วคราวของ Achievement (ใช้จนกว่าจะมีรูปวาดจริงใน assets/achievements/)
+static func ach_badge(id: String, _icon: String = "", locked: bool = false) -> ImageTexture:
+	return cached("ach_%s_%s" % [id, locked], func():
+		var img := blank(32, 32)
+		var hue := float(abs(id.hash()) % 360) / 360.0
+		var base := Color.from_hsv(hue, 0.45, 0.95) if not locked else Color("c3cfdb")
+		var dark := base.darkened(0.3)
+		r(img, 9, 22, 5, 9, Color("d8453b") if not locked else Color("9aa8b4"))
+		r(img, 18, 22, 5, 9, Color("2f6fb8") if not locked else Color("9aa8b4"))
+		ell(img, 16, 14, 12, 12, dark)
+		ell(img, 16, 14, 10.5, 10.5, base)
+		ell(img, 16, 14, 7.5, 7.5, base.lightened(0.25))
+		ell(img, 13, 10, 2.5, 2, Color(1, 1, 1, 0.7))
+		return outline(img))
 
 
 # ============================================================
