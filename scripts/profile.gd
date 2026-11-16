@@ -55,6 +55,7 @@ const ACH := [
 	{"id": "community", "icon": "🏡", "t": "ลงชุมชนครั้งแรก", "desc": "ประเมินเต็มชุดในชุมชน (เยี่ยมบ้าน) จบ 1 ครั้ง", "reward": {"item": "hat_sun"}},
 	{"id": "hard_clear", "icon": "🔥", "t": "มือโปรเคสยาก", "desc": "ประเมินเต็มชุดระดับยากได้อย่างน้อย 2 ดาว", "reward": {"coins": 80}},
 	{"id": "all_diff", "icon": "👑", "t": "ครบทุกระดับ", "desc": "ประเมินเต็มชุดจบครบทั้งระดับง่าย ปานกลาง และยาก", "reward": {"item": "suit_gold"}},
+	{"id": "mini_all", "icon": "🎮", "t": "นักเล่นมินิเกม", "desc": "เล่นมินิเกมครบทั้ง 3 เกม", "reward": {"coins": 30}},
 	{"id": "shopper", "icon": "🛍", "t": "สายแฟชั่นประจำวอร์ด", "desc": "ซื้อเสื้อผ้าชิ้นแรกจากร้าน", "reward": {"coins": 10}},
 ]
 
@@ -66,6 +67,12 @@ const COIN_RULES := {
 	"full_bonus": 30,      # โบนัสเมื่อประเมินครบทั้งชุด
 	"community_bonus": 10, # โบนัสเมื่อประเมินในชุมชน (เต็มชุด)
 	"start": 50,           # เหรียญเริ่มต้นของบัญชีใหม่
+}
+
+# มินิเกม (ร่าง): เหรียญต่อรอบ = round(max × ผลงาน 0–1) · รับเหรียญได้วันละ daily รอบต่อเกม
+const MINI_RULES := {
+	"max": 20,    # เหรียญสูงสุดต่อรอบ
+	"daily": 3,   # จำนวนรอบที่ได้เหรียญต่อวัน ต่อเกม
 }
 
 var data := {}
@@ -114,6 +121,44 @@ func coins() -> int:
 func add_coins(n: int) -> void:
 	data.coins = coins() + n
 	save()
+
+
+# ---------- มินิเกม ----------
+func _mini() -> Dictionary:
+	if not data.has("mini") or not (data.mini is Dictionary):
+		data.mini = {}
+	var m: Dictionary = data.mini
+	var today := Time.get_date_string_from_system()
+	if m.get("day", "") != today:
+		m.day = today
+		m.n = {}
+	for k in ["n", "best", "played"]:
+		if not m.has(k) or not (m[k] is Dictionary):
+			m[k] = {}
+	return m
+
+func mini_left(id: String) -> int:
+	return maxi(int(MINI_RULES.daily) - int(_mini().n.get(id, 0)), 0)
+
+func mini_best(id: String) -> int:
+	return int(_mini().best.get(id, 0))
+
+## จบรอบมินิเกม → คืนเหรียญที่ได้
+func mini_end(id: String, pct: float, best: int) -> int:
+	var m := _mini()
+	var earned := 0
+	if mini_left(id) > 0:
+		earned = int(round(float(MINI_RULES.max) * clampf(pct, 0.0, 1.0)))
+		if earned > 0:
+			m.n[id] = int(m.n.get(id, 0)) + 1
+			data.coins = coins() + earned
+	if best > int(m.best.get(id, 0)):
+		m.best[id] = best
+	m.played[id] = true
+	save()
+	if m.played.size() >= 3:
+		unlock("mini_all")
+	return earned
 
 
 # ---------- ตู้เสื้อผ้า ----------

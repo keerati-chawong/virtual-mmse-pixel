@@ -1,5 +1,5 @@
 extends Node
-## เล่นอัตโนมัติทั้งรอบ + ถ่ายภาพหน้าจอ (ใช้ตรวจงาน): godot --path . -- --shots <dir> [--hard] [--comm] [--male]
+## เล่นอัตโนมัติทั้งรอบ + ถ่ายภาพหน้าจอ (ใช้ตรวจงาน): godot --path . -- --shots <dir> [--hard] [--comm] [--male] [--mini]
 
 var main: Node
 var dir := ""
@@ -97,6 +97,12 @@ func _go() -> void:
 	G.goto("achieve")
 	await wait(0.8)
 	await shot("achieve")
+	G.goto("minigame")
+	await wait(0.8)
+	await shot("mini_hub")
+	if args.has("--mini"):
+		await _minigames()
+		return
 	G.setup = {"ans": {"edu": "yes", "blind": "no", "deaf": "no", "dep": "no", "pedu": "primary"},
 		"kit": {"form": true, "a4": true, "watch": true, "card": true, "penta": true, "x_pen": true}}
 	G.goto("brief", {"mode": "new"})
@@ -192,3 +198,69 @@ func _loop() -> void:
 		if nm == "result":
 			await shot("result")
 			return
+
+
+## เล่นมินิเกมทั้ง 3 เกมอัตโนมัติ
+func _minigames() -> void:
+	var m := cur()
+	# 1) จำให้แม่น — เปิดผิด 1 คู่ก่อน แล้วจับคู่ให้ครบ
+	m._start("memory")
+	await wait(0.3)
+	var idx := {}
+	for i in m.cards.size():
+		var k: String = m.cards[i].k
+		if not idx.has(k):
+			idx[k] = []
+		idx[k].append(i)
+	var ks: Array = idx.keys()
+	m._flip(idx[ks[0]][0])
+	m._flip(idx[ks[1]][0])
+	await wait(0.1)
+	await shot("mini_memory_wrong")
+	await wait(0.9)
+	for j in 3:
+		m._flip(idx[ks[j]][0])
+		m._flip(idx[ks[j]][1])
+		await wait(0.1)
+	m._flip(idx[ks[3]][0])
+	await wait(0.1)
+	await shot("mini_memory_play")
+	m._flip(idx[ks[3]][1])
+	for j in range(4, 6):
+		m._flip(idx[ks[j]][0])
+		m._flip(idx[ks[j]][1])
+	await wait(0.4)
+	await shot("mini_memory_end")
+	# 2) ลบเจ็ดสายฟ้า — ตอบถูก 6 ผิด 1
+	m._start("seven")
+	await wait(0.3)
+	await shot("mini_seven_play")
+	for j in 7:
+		var right: int = m.cur_n - 7
+		var pick: int = m.opts.find(right)
+		if j == 3:
+			pick = (pick + 1) % 4
+		m._answer(pick)
+		await wait(0.05)
+	await shot("mini_seven_after")
+	await until(func(): return not m.playing, 60.0)
+	await wait(0.3)
+	await shot("mini_seven_end")
+	# 3) จัดกระเป๋าให้ถูก — ตอบผิดชิ้นที่ 3
+	m._start("kit")
+	await wait(0.3)
+	await shot("mini_kit_play")
+	for j in 12:
+		var it: Dictionary = m.deck[m.di]
+		var put: bool = it.ok
+		if j == 2:
+			put = not put
+		m._pack(put)
+		if j == 2:
+			await wait(0.1)
+			await shot("mini_kit_wrong")
+	await wait(0.4)
+	await shot("mini_kit_end")
+	m._hub()
+	await wait(0.3)
+	await shot("mini_hub_after")

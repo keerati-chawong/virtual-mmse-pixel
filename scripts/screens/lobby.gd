@@ -26,6 +26,7 @@ func _ready() -> void:
 	coin_l = UI.head("🪙 %d" % Prof.coins(), 18, UI.INK)
 	cf.add_child(coin_l)
 	top.add_child(cf)
+	top.add_child(UI.btn("🎮 มินิเกม", func(): G.goto("minigame"), "warn", 14))
 	top.add_child(UI.btn("👗 แต่งตัว & ร้านค้า", func(): G.goto("wardrobe"), "", 14))
 	top.add_child(UI.btn("🏆 Achievement", func(): G.goto("achieve"), "", 14))
 	top.add_child(UI.btn("ออกจากระบบ", func():

@@ -61,6 +61,7 @@ func _ready() -> void:
 	ab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mh.add_child(ab)
 	mv.add_child(mh)
+	mv.add_child(UI.btn("🎮  มินิเกม · ฝึกทักษะ MMSE ได้เหรียญ", func(): G.goto("minigame"), "warn", 16))
 	mv.add_child(UI.btn("🎓  ชุดนักศึกษาพยาบาล & โลโก้คณะ", _gallery, "", 16))
 	mv.add_child(UI.btn("📜  มีอะไรใหม่ · อัปเดต 15-11-2569", _notes, "", 16))
 	mv.add_child(UI.btn("📚  Pre-Test · คู่มือ · Post-Test", func(): G.say("ส่วนนี้ยังไม่อยู่ในเดโม — เดโมนี้คือเกมประเมิน MMSE ครบทั้ง 11 ข้อ"), "", 16))

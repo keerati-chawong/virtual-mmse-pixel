@@ -14,8 +14,9 @@ const SCREENS := {
 	"result": "res://scripts/screens/result.gd",
 	"wardrobe": "res://scripts/screens/wardrobe.gd",
 	"achieve": "res://scripts/screens/achieve.gd",
+	"minigame": "res://scripts/screens/minigame.gd",
 }
-const NEED_LOGIN := ["lobby", "brief", "wardrobe", "achieve"]
+const NEED_LOGIN := ["lobby", "brief", "wardrobe", "achieve", "minigame"]
 const GAME_SCREENS := ["walk", "time", "cmd", "part"]
 
 var content: Control
