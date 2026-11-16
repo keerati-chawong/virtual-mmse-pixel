@@ -20,7 +20,7 @@ func setup(a: Dictionary) -> void:
 
 
 func _ready() -> void:
-	build_base("room")
+	build_base(G.room_kind())
 	for it in D.CMD_ITEMS:
 		if ids.has(it.id):
 			items.append(it)

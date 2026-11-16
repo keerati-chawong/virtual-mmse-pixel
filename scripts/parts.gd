@@ -9,6 +9,8 @@ extends RefCounted
 static func time_answer(item: Dictionary, opt_type: String) -> Dictionary:
 	if opt_type == "leading":
 		return item.lead
+	if opt_type == "half" and item.has("half"):
+		return item.half
 	var good := []
 	var bad := []
 	for a in item.answers:
@@ -88,9 +90,6 @@ static func cmd_feedback(item: Dictionary, rec: Dictionary, out: Array) -> void:
 # ---------- ข้อ 2 3 4 5 6 7 10 11 ----------
 static func rows(id: String, sc: Dictionary) -> Array:
 	match id:
-		"place":
-			return [{"k": "here", "t": "อยู่ที่ไหน + ที่นี่ชื่ออะไร"}, {"k": "floor", "t": "อยู่ชั้นไหนของอาคาร"},
-				{"k": "amphoe", "t": "อำเภออะไร"}, {"k": "province", "t": "จังหวัดอะไร"}, {"k": "region", "t": "ภาคอะไร"}]
 		"reg":
 			return [{"k": "flower", "t": "พูดตามคำว่า “ดอกไม้”"}, {"k": "river", "t": "พูดตามคำว่า “แม่น้ำ”"},
 				{"k": "train", "t": "พูดตามคำว่า “รถไฟ”"}]
@@ -121,7 +120,6 @@ static func rows(id: String, sc: Dictionary) -> Array:
 
 static func roll(id: String, t: String) -> Dictionary:
 	match id:
-		"place": return _roll_place(t)
 		"reg": return _roll_reg(t)
 		"calc": return _roll_calc(t)
 		"recall": return _roll_recall(t)
@@ -130,56 +128,6 @@ static func roll(id: String, t: String) -> Dictionary:
 		"write": return _roll_write(t)
 		"draw": return _roll_draw(t)
 	return {}
-
-
-static func _roll_place(t: String) -> Dictionary:
-	var sc := {"truth": {}, "said": {}, "seq": []}
-	var right := {
-		"here": D.t("อยู่โรงพยาบาล{k} ชื่อโรงพยาบาลศรีนครินทร์"),
-		"floor": D.t(G.pick(["ชั้น 5 {k}", "ชั้นบน{k}"])),
-		"amphoe": D.t("อำเภอเมือง{k}"),
-		"province": D.t("จังหวัดขอนแก่น{k}"),
-		"region": D.t(G.pick(["ภาคอีสาน{k}", "อีสานเหนือ{k}"])),
-	}
-	var wrong := {
-		"here": D.t(G.pick(["อยู่โรงพยาบาล{k}", "อยู่บ้าน{me}ไม่ใช่เหรอ"])),
-		"floor": D.t("ไม่แน่ใจ{k}"),
-		"amphoe": D.t("จำไม่ได้{k}"),
-		"province": D.t("จังหวัดอุดรธานี{k}"),
-		"region": D.t("ภาคกลางมั้ง{k}"),
-	}
-	var ask := {
-		"here": D.t("“ตอนนี้{c}อยู่ที่ไหนคะ แล้วที่นี่ชื่ออะไรคะ”"),
-		"floor": "“ตรงนี้เป็นชั้นไหนของตึกคะ”",
-		"amphoe": "“ที่นี่อยู่อำเภออะไรคะ”",
-		"province": "“จังหวัดอะไรคะ”",
-		"region": "“อยู่ภาคไหนของประเทศคะ”",
-	}
-	var cued := {"here": 1, "floor": 1, "amphoe": 1}
-	for k in ["here", "floor", "amphoe", "province", "region"]:
-		var ok := G.chance(0.75 if k == "province" else 0.7)
-		var a: String = right[k] if ok else wrong[k]
-		var q: String = ask[k]
-		if t == "leading" and cued.has(k):
-			ok = true
-			a = D.t("ใช่{k} ตามที่คุณพยาบาลบอกเลย")
-			q = "(บอกคำตอบไปในคำถาม) " + ask[k]
-		if t == "half" and k == "here":
-			a = D.t("อยู่โรงพยาบาล{k}")
-			ok = false
-			q = "“ตอนนี้อยู่ที่ไหนคะ”"
-		sc.truth[k] = int(ok)
-		sc.said[k] = a
-		if t == "leading" and cued.has(k):
-			sc.said[k] = a + " — ตอบรับตามคำตอบที่ผู้ประเมินใบ้ให้ ไม่ได้ระลึกเอง"
-		if t == "half" and k == "here":
-			sc.said[k] = a + " — ผู้ประเมินไม่ได้ถามว่าที่นี่ชื่ออะไร จึงไม่ครบเกณฑ์ข้อนี้"
-		# ผู้ป่วยสับสน: ถามว่าอะไรนะ แล้วพยาบาลถามซ้ำ (ข้อ 2 ทวนคำถามได้)
-		if not (t == "leading" and cued.has(k)) and G.confused_moment():
-			sc.seq.append({"q": q, "a": D.t("หือ… ถามว่าอะไรนะ{k}")})
-			q = "(ถามซ้ำช้า ๆ) " + q
-		sc.seq.append({"q": q, "a": a})
-	return sc
 
 
 static func _roll_reg(t: String) -> Dictionary:
@@ -385,16 +333,6 @@ static func feedback(id: String, rec: Dictionary, out: Array) -> void:
 	var t: String = rec.type
 	var sc: Dictionary = rec.sc
 	match id:
-		"place":
-			if t == "good":
-				out.append(G.fb("good", "ข้อ 2 ถามครบทั้ง 5 ข้อแบบปลายเปิด", "ข้อแรกถามครบทั้ง “อยู่ที่ไหน” และ “ที่นี่ชื่ออะไร” ซึ่งเป็นเงื่อนไขของการได้ 1 คะแนนในข้อนั้น"))
-			elif t == "half":
-				out.append(G.fb("tip", "ข้อ 2.1 ถามไม่ครบ", "ข้อ 2.1 ต้องได้คำตอบทั้ง “ตอนนี้อยู่ที่ไหน” และ “ที่นี่ชื่ออะไร” ถามแค่อย่างเดียวผู้ป่วยจึงไม่มีทางได้คะแนนข้อนี้ ทั้งที่อาจตอบได้ถ้าถามครบ",
-					D.t("ควรถามว่า “ตอนนี้{c}อยู่ที่ไหนคะ แล้วที่นี่ชื่ออะไรคะ”")))
-			else:
-				out.append(G.fb("tip", "ข้อ 2 ใช้คำถามชี้นำ", "บอกชื่อโรงพยาบาล ชั้น และอำเภอไปในคำถามแล้ว ผู้ป่วยเพียงตอบรับ คะแนนที่ได้จึงไม่สะท้อนการรับรู้สถานที่จริง",
-					D.t("ควรถามปลายเปิดทีละข้อ เช่น “ตอนนี้{c}อยู่ที่ไหนคะ แล้วที่นี่ชื่ออะไรคะ”")))
-			out.append(G.fb("info", "เกณฑ์ที่ยืดหยุ่นของข้อ 2", "ชั้นของอาคาร ตอบ “ชั้นบน/ชั้นล่าง” ก็นับคะแนน · ภาค ตอบ “อีสานเหนือ” หรือ “อีสานใต้” ก็นับคะแนน อย่าหักคะแนนเพราะผู้ป่วยไม่ได้ตอบเป็นคำทางการ"))
 		"reg":
 			if t == "good":
 				out.append(G.fb("good", "ข้อ 3 บอกชื่อของครั้งเดียวตามเกณฑ์", "พูดครบ 3 อย่างในครั้งเดียวแล้วให้ผู้ป่วยพูดตาม เป็นการวัดการบันทึกความจำที่ถูกต้อง"))

@@ -17,7 +17,7 @@ func setup(a: Dictionary) -> void:
 
 func _ready() -> void:
 	var out: bool = args.get("mode", "in") == "out"
-	stage = Stage.new("corridor")
+	stage = Stage.new(G.hall_kind())
 	stage.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(stage)
 
@@ -27,7 +27,8 @@ func _ready() -> void:
 	top.offset_right = -14
 	top.offset_top = 12
 	var tf := UI.frame("dialog", 10)
-	var title := "เดินไปหยิบอุปกรณ์เพิ่ม" if out else ("กลับเข้าห้องตรวจ" if args.get("resume", false) else "เข้าห้องตรวจ")
+	var room := "บ้านผู้สูงอายุ" if G.is_comm() else "ห้องตรวจ"
+	var title := "เดินไปหยิบอุปกรณ์เพิ่ม" if out else (("กลับเข้า" + room) if args.get("resume", false) else ("เข้า" + room))
 	tf.add_child(UI.title("🚪 " + title, 20, Color.WHITE))
 	top.add_child(tf)
 	top.add_child(UI.spacer())
@@ -67,22 +68,22 @@ func _ready() -> void:
 
 func _note() -> String:
 	if args.get("mode", "in") == "in":
-		var n := "[b]หยิบของเพิ่มแล้ว กลับเข้าห้องตรวจ[/b]\nตรวจถาดอีกครั้งก่อนเข้าไป จะได้ไม่ต้องเดินออกมาอีก" if args.get("resume", false) \
-			else "[b]ก่อนเข้าห้องตรวจ[/b]\nตรวจของในถาดให้ครบตามที่แบบประเมินกำหนด 6 ชิ้น"
+		var n := "[b]หยิบของเพิ่มแล้ว กลับไปประเมินต่อ[/b]\nตรวจถาดอีกครั้งก่อนเข้าไป จะได้ไม่ต้องเดินออกมาอีก" if args.get("resume", false) \
+			else ("[b]ก่อนเข้าบ้านผู้สูงอายุ[/b]\nตรวจของในกระเป๋าเยี่ยมบ้านให้ครบตามที่แบบประเมินกำหนด 6 ชิ้น" if G.is_comm() else "[b]ก่อนเข้าห้องตรวจ[/b]\nตรวจของในถาดให้ครบตามที่แบบประเมินกำหนด 6 ชิ้น")
 		var miss := G.missing_kit()
 		if miss.size():
-			n += "\n[color=#ff9a8a]ยังขาด %d ชิ้น — %s พอถึงข้อที่ต้องใช้จะต้องเดินออกมาหยิบ[/color]" % [miss.size(), " · ".join(miss.map(func(k): return D.kit_name(k)))]
+			n += "\n[color=#c0392b]ยังขาด %d ชิ้น — %s พอถึงข้อที่ต้องใช้จะต้องเดินออกมาหยิบ[/color]" % [miss.size(), " · ".join(miss.map(func(k): return D.kit_name(k)))]
 		var extra := G.wrong_kit()
 		if extra.size():
-			n += "\n[color=#ff9a8a]หยิบเกินมา: %s — ไม่ได้อยู่ในรายการอุปกรณ์[/color]" % " · ".join(extra.map(func(e): return e.t))
+			n += "\n[color=#c0392b]หยิบเกินมา: %s — ไม่ได้อยู่ในรายการอุปกรณ์[/color]" % " · ".join(extra.map(func(e): return e.t))
 		return n
 	var part: Dictionary = args.part
 	var prob: Dictionary = args.prob
 	if prob.wrong.size():
 		var w: Dictionary = prob.wrong[0]
-		return "[b]ข้อ %d %s — หยิบของมาผิดชิ้น[/b]\nข้อนี้ต้องใช้ [b]%s[/b] แต่ที่ติดมือมาคือ [color=#ff9a8a]%s[/color]\n%s — ใช้แทนกันไม่ได้ ต้องเดินกลับไปหยิบของที่ถูกต้อง" % [
+		return "[b]ข้อ %d %s — หยิบของมาผิดชิ้น[/b]\nข้อนี้ต้องใช้ [b]%s[/b] แต่ที่ติดมือมาคือ [color=#c0392b]%s[/color]\n%s — ใช้แทนกันไม่ได้ ต้องเดินกลับไปหยิบของที่ถูกต้อง" % [
 			part.n, part.title, D.kit_name(w.need), D.kit_name(w.got), D.kit_item(w.got).why]
-	return "[b]ข้อ %d %s — ไม่มีอุปกรณ์ติดมือมา[/b]\nข้อนี้ต้องใช้ [color=#ff9a8a]%s[/color]\nในถาดไม่มีของชิ้นนี้เลย ต้องเดินออกจากห้องตรวจไปหยิบที่โต๊ะเตรียมอุปกรณ์" % [
+	return "[b]ข้อ %d %s — ไม่มีอุปกรณ์ติดมือมา[/b]\nข้อนี้ต้องใช้ [color=#c0392b]%s[/color]\nในถาดไม่มีของชิ้นนี้เลย ต้องเดินออกไปหยิบที่โต๊ะเตรียมอุปกรณ์" % [
 		part.n, part.title, " · ".join(prob.missing.map(func(k): return D.kit_name(k)))]
 
 
@@ -134,12 +135,12 @@ func _play() -> void:
 		stage.show_flag("จัดอุปกรณ์ใส่ถาด")
 		seq.tween_interval(1.7)
 		seq.tween_callback(func():
-			stage.show_flag("เดินไปที่ห้องตรวจ")
+			stage.show_flag("เดินไปที่บ้านผู้สูงอายุ" if G.is_comm() else "เดินไปที่ห้องตรวจ")
 			_walking(true))
 		seq.tween_property(n, "position:x", 246.0, 2.0)
 		seq.tween_callback(func():
 			stage.props.door.visible = false
-			stage.show_flag("เปิดประตูเข้าห้องตรวจ"))
+			stage.show_flag("ขออนุญาตเข้าบ้าน" if G.is_comm() else "เปิดประตูเข้าห้องตรวจ"))
 		seq.tween_interval(0.5)
 		seq.tween_property(n, "position:x", 262.0, 0.5)
 		seq.parallel().tween_property(n, "modulate:a", 0.0, 0.5)
@@ -152,7 +153,7 @@ func _play() -> void:
 		n.modulate.a = 0.0
 		stage.props.door.visible = false
 		stage.set_nurse("idle")
-		stage.show_flag("ออกจากห้องตรวจ")
+		stage.show_flag("ออกจากบ้านผู้สูงอายุ" if G.is_comm() else "ออกจากห้องตรวจ")
 		seq.tween_property(n, "modulate:a", 1.0, 0.4)
 		seq.parallel().tween_property(n, "position:x", 244.0, 0.5)
 		seq.tween_callback(func():

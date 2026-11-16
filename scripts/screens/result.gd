@@ -48,6 +48,12 @@ func _ready() -> void:
 	var stars := G.stars_for(t.miss, full)
 	var key: String = "full" if full else ids[0]
 	var improved := G.save_stars(key, stars)
+	# ---- เหรียญ + Achievement ----
+	var interp_ok: bool = full and not run.interp.is_empty() and run.interp.cut == ek and run.interp.verdict == v_given
+	var open_only: bool = full and run.results.has("time") and run.results.has("place") \
+		and int(run.results.time.get("leading_n", 1)) == 0 and int(run.results.place.get("leading_n", 1)) == 0
+	var earned := Prof.on_run_end({"full": full, "stars": stars, "miss": t.miss, "diff": G.scn().diff,
+		"setting": G.setting, "interp_ok": interp_ok, "open_only": open_only})
 	var ban := UI.vbox(0)
 	ban.alignment = BoxContainer.ALIGNMENT_CENTER
 	var bt := UI.title("ASSESSMENT COMPLETE!" if full else "STAGE CLEAR!", 40, UI.GOLD)
@@ -56,7 +62,7 @@ func _ready() -> void:
 	var sr := UI.hbox(14)
 	sr.alignment = BoxContainer.ALIGNMENT_CENTER
 	for i in 3:
-		var st := UI.title("★", 64, UI.GOLD if i < stars else Color("3a4d66"))
+		var st := UI.title("★", 64, UI.GOLD if i < stars else Color("c3d3e0"))
 		st.pivot_offset = Vector2(24, 40)
 		st.scale = Vector2.ZERO
 		sr.add_child(st)
@@ -70,6 +76,9 @@ func _ready() -> void:
 	var cap := UI.title(["", "บันทึกคลาดเคลื่อนหลายจุด — ลองใหม่อีกครั้ง!", "เกือบสมบูรณ์! พลาดเล็กน้อย", "สมบูรณ์แบบ! บันทึกตรงทุกจุด"][stars] + ("   ✦ สถิติใหม่!" if improved else ""), 18, Color.WHITE)
 	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ban.add_child(cap)
+	var cl := UI.title("+%d 🪙  (รวม %d เหรียญ — ใช้ซื้อเสื้อผ้าได้ที่ร้าน)" % [earned, Prof.coins()], 18, Color("f0a020"))
+	cl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ban.add_child(cl)
 	col.add_child(ban)
 
 	# ---- หัวสรุป ----
@@ -82,7 +91,7 @@ func _ready() -> void:
 	th.add_child(ring)
 	var tv := UI.vbox(6)
 	tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tv.add_child(UI.label("ผลการประเมิน · Scenario %d — %s อายุ %d ปี" % [G.scn().no, G.scn().name, G.scn().age], 12, UI.MUTED, true))
+	tv.add_child(UI.label("ผลการประเมิน · %s อายุ %d ปี · ระดับ%s · %s" % [G.scn().name, G.scn().age, D.diff_of(G.scn().diff).t, D.setting_of(G.setting).t], 12, UI.MUTED, true))
 	var p0 := D.part_of(ids[0])
 	tv.add_child(UI.head("สรุปผลการประเมิน MMSE" if full else "สรุปผล ข้อ %d %s" % [p0.n, p0.title], 26))
 	var lede := "ผู้ป่วยรายนี้ทำได้จริง %d / %d คะแนน · คุณบันทึกไว้ %d / %d — บันทึกคลาดเคลื่อน %d จุด" % [t.truth, t.max, t.given, t.max, t.miss]
@@ -173,8 +182,8 @@ func _ready() -> void:
 			fbs.append(G.fb("info", "เปิดดูข้อมูลการศึกษาของผู้ป่วยก่อนเลือกเกณฑ์", "ในงานจริงข้อมูลนี้อยู่ในแบบบันทึกอยู่แล้ว การย้อนกลับไปดูไม่ผิด แต่ควรถามระดับการศึกษาไว้ตั้งแต่ขั้นคัดกรอง เพราะมันกำหนดทั้งชุดข้อที่ใช้และจุดตัดตอนแปลผล"))
 	if full:
 		fbs.append(G.fb("info", "การแปลผลคะแนนรวม", "คะแนนที่ผู้ป่วยทำได้จริงคือ %d / %d · ผู้ป่วย %s จุดตัดคือ ≤ %d คะแนน → %s · MMSE เป็นเพียงเครื่องมือคัดกรอง ไม่ใช่การวินิจฉัยภาวะสมองเสื่อม คะแนนถึงจุดตัดหมายถึงต้องส่งประเมินเพิ่มเติมต่อ ไม่ใช่สรุปว่าเป็นโรค" % [t.truth, t.max, cut.short, cut.cut, D.VERDICT_T[v_truth]]))
-	if G.scenario_key == "s2":
-		fbs.append(G.fb("info", "Scenario 2 — ผู้ป่วยที่มีความสับสน", "ผู้ป่วยตอบช้า บางครั้งตอบไม่ตรงคำถามหรือขอให้ถามซ้ำ ผู้ประเมินควรให้เวลา พูดช้า ชัด ถามซ้ำได้เฉพาะข้อที่เกณฑ์อนุญาต (เช่น ข้อ 1–2) และบันทึกตามที่ผู้ป่วยทำได้จริงโดยไม่ช่วยใบ้"))
+	if float(G.scn().confuse) > 0.2:
+		fbs.append(G.fb("info", "ผู้ป่วยที่มีความสับสน", "ผู้ป่วยตอบช้า บางครั้งตอบไม่ตรงคำถามหรือขอให้ถามซ้ำ ผู้ประเมินควรให้เวลา พูดช้า ชัด ถามซ้ำได้เฉพาะข้อที่เกณฑ์อนุญาต (เช่น ข้อ 1–2) และบันทึกตามที่ผู้ป่วยทำได้จริงโดยไม่ช่วยใบ้"))
 	for f in fbs:
 		fv.add_child(_fb_card(f))
 	row.add_child(fp)
@@ -187,7 +196,7 @@ func _ready() -> void:
 
 	G.push_history({
 		"when": Time.get_datetime_string_from_system(false, true).substr(0, 16),
-		"mod": ("ประเมินเต็มชุด" if full else "ข้อ %d %s" % [p0.n, p0.title]) + " · S%d" % G.scn().no,
+		"mod": ("ประเมินเต็มชุด" if full else "ข้อ %d %s" % [p0.n, p0.title]) + " · %s (%s)" % [G.scn().name, D.diff_of(G.scn().diff).t],
 		"max": t.max, "score": t.given, "miss": t.miss,
 	})
 

@@ -21,6 +21,7 @@ config/icon="res://assets/logo_nursing.png"
 D="*res://scripts/data.gd"
 G="*res://scripts/game.gd"
 S="*res://scripts/sfx.gd"
+Prof="*res://scripts/profile.gd"
 
 [debug]
 

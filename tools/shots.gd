@@ -1,5 +1,5 @@
 extends Node
-## เล่นอัตโนมัติทั้งรอบ + ถ่ายภาพหน้าจอ (ใช้ตรวจงาน): godot --path . -- --shots <dir> [--s2]
+## เล่นอัตโนมัติทั้งรอบ + ถ่ายภาพหน้าจอ (ใช้ตรวจงาน): godot --path . -- --shots <dir> [--hard] [--comm] [--male] [--mini]
 
 var main: Node
 var dir := ""
@@ -42,17 +42,67 @@ func until(cond: Callable, timeout: float = 30.0) -> void:
 		t += get_process_delta_time()
 	if t >= timeout:
 		push_error("timeout on " + main.current_name)
+		print("SHOTS FAILED (timeout)")
+		get_tree().quit(1)
+
+
+func _time_screen(t: Node, tag: String) -> void:
+	await until(func(): return t.dlg_choices.visible)
+	await wait(0.2)
+	await shot(tag + "_menu")
+	var first := true
+	for item in t.items:
+		t._ask(0, item.id)
+		if first:
+			await wait(0.8)
+			await shot(tag + "_answer")
+		await until(func(): return t.pad_actions.get_child_count() > 0)
+		if first:
+			await wait(0.4)
+			await shot(tag + "_score")
+		first = false
+		t._score(1)
+		await wait(0.5)
+	t._finish()
 
 
 func _go() -> void:
+	var args := OS.get_cmdline_user_args()
 	await wait(1.0)
 	await shot("title")
 	G.register("demo.shots@example.com", "123456", "123456")
 	G.login("demo.shots@example.com", "123456")
-	G.scenario_key = "s2" if OS.get_cmdline_user_args().has("--s2") else "s1"
+	G.setting = "comm" if args.has("--comm") else "hosp"
+	G.roll_case("hard" if args.has("--hard") else "easy")
+	if args.has("--male"):
+		Prof.add_coins(500)
+		Prof.equip("sex", "m")
+		Prof.buy("suit_mint")
+		Prof.equip("suit", "suit_mint")
+		Prof.buy("acc_stetho")
+		Prof.equip("acc", "acc_stetho")
+		Prof.equip("hat", "hat_none")
+	var only := args.find("--only")
+	if only >= 0:
+		G.start_single_run(args[only + 1])
+		await wait(1.0)
+		await _loop()
+		return
 	G.goto("lobby")
-	await wait(0.6)
+	await wait(0.8)
 	await shot("lobby")
+	G.goto("wardrobe")
+	await wait(0.8)
+	await shot("wardrobe")
+	G.goto("achieve")
+	await wait(0.8)
+	await shot("achieve")
+	G.goto("minigame")
+	await wait(0.8)
+	await shot("mini_hub")
+	if args.has("--mini"):
+		await _minigames()
+		return
 	G.setup = {"ans": {"edu": "yes", "blind": "no", "deaf": "no", "dep": "no", "pedu": "primary"},
 		"kit": {"form": true, "a4": true, "watch": true, "card": true, "penta": true, "x_pen": true}}
 	G.goto("brief", {"mode": "new"})
@@ -67,26 +117,19 @@ func _go() -> void:
 	await until(func(): return main.current_name == "time")
 	await wait(1.4)
 	await shot("time_intro")
-	var t: Node = cur()
-	await until(func(): return t.dlg_choices.visible)
-	await wait(0.2)
-	await shot("time_menu")
-	for item in D.ITEMS:
-		t._ask(0, item.id)
-		if item.id == "date":
-			await wait(0.8)
-			await shot("time_answer")
-		await until(func(): return t.pad_actions.get_child_count() > 0)
-		if item.id == "date":
-			await wait(0.4)
-			await shot("time_score")
-		t._score(1)
-		await wait(0.5)
-	t._finish()
+	await _time_screen(cur(), "time")
+	await _loop()
+
+
+func _loop() -> void:
 	var taken := {}
 	while true:
 		await wait(0.3)
 		var nm: String = main.current_name
+		if nm == "time":
+			await wait(1.0)
+			await _time_screen(cur(), cur().pid)
+			continue
 		if nm == "walk":
 			if not taken.has("walk_out"):
 				await wait(1.0)
@@ -103,8 +146,6 @@ func _go() -> void:
 		if nm == "part":
 			var p: Node = cur()
 			await until(func(): return p.dlg_choices.visible)
-			if not taken.has(p.id + "_menu") and p.id == "place":
-				await shot("part_place_menu")
 			p._pick(0)
 			p._play()
 			await wait(1.6)
@@ -118,7 +159,7 @@ func _go() -> void:
 			for k in p.rows_state:
 				p.rows_state[k].on = randf() < 0.7
 				p._row_style(k)
-			if p.id in ["place", "calc", "draw"]:
+			if p.id in ["calc", "draw"]:
 				await shot("part_" + p.id + "_score")
 			taken[p.id] = true
 			p._save()
@@ -149,9 +190,77 @@ func _go() -> void:
 			ip.cut = "primary"
 			ip.verdict = "normal"
 			ip._confirm()
+			await wait(0.6)
+			await shot("result_ach")
 			await wait(2.0)
 			await shot("result")
 			return
 		if nm == "result":
 			await shot("result")
 			return
+
+
+## เล่นมินิเกมทั้ง 3 เกมอัตโนมัติ
+func _minigames() -> void:
+	var m := cur()
+	# 1) จำให้แม่น — เปิดผิด 1 คู่ก่อน แล้วจับคู่ให้ครบ
+	m._start("memory")
+	await wait(0.3)
+	var idx := {}
+	for i in m.cards.size():
+		var k: String = m.cards[i].k
+		if not idx.has(k):
+			idx[k] = []
+		idx[k].append(i)
+	var ks: Array = idx.keys()
+	m._flip(idx[ks[0]][0])
+	m._flip(idx[ks[1]][0])
+	await wait(0.1)
+	await shot("mini_memory_wrong")
+	await wait(0.9)
+	for j in 3:
+		m._flip(idx[ks[j]][0])
+		m._flip(idx[ks[j]][1])
+		await wait(0.1)
+	m._flip(idx[ks[3]][0])
+	await wait(0.1)
+	await shot("mini_memory_play")
+	m._flip(idx[ks[3]][1])
+	for j in range(4, 6):
+		m._flip(idx[ks[j]][0])
+		m._flip(idx[ks[j]][1])
+	await wait(0.4)
+	await shot("mini_memory_end")
+	# 2) ลบเจ็ดสายฟ้า — ตอบถูก 6 ผิด 1
+	m._start("seven")
+	await wait(0.3)
+	await shot("mini_seven_play")
+	for j in 7:
+		var right: int = m.cur_n - 7
+		var pick: int = m.opts.find(right)
+		if j == 3:
+			pick = (pick + 1) % 4
+		m._answer(pick)
+		await wait(0.05)
+	await shot("mini_seven_after")
+	await until(func(): return not m.playing, 60.0)
+	await wait(0.3)
+	await shot("mini_seven_end")
+	# 3) จัดกระเป๋าให้ถูก — ตอบผิดชิ้นที่ 3
+	m._start("kit")
+	await wait(0.3)
+	await shot("mini_kit_play")
+	for j in 12:
+		var it: Dictionary = m.deck[m.di]
+		var put: bool = it.ok
+		if j == 2:
+			put = not put
+		m._pack(put)
+		if j == 2:
+			await wait(0.1)
+			await shot("mini_kit_wrong")
+	await wait(0.4)
+	await shot("mini_kit_end")
+	m._hub()
+	await wait(0.3)
+	await shot("mini_hub_after")
